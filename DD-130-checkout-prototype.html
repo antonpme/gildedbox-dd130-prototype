@@ -659,7 +659,7 @@
                     class="w-14 h-16 bg-transparent border-0 border-b border-zinc-400 text-center text-3xl font-serif uppercase text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 transition">
                 </template>
               </div>
-              <p class="text-[10px] text-stone-400 mt-1.5 uppercase tracking-wider">3 chars · A–Z, 0–9</p>
+              <p class="text-[10px] text-stone-400 mt-1.5 uppercase tracking-wider">Initials (3 chars · A–Z, 0–9)</p>
             </div>
           </div>
 
@@ -672,10 +672,8 @@
               <p class="text-[11px] text-stone-400 mt-1 uppercase tracking-wider">Printed tag on bag</p>
             </div>
             <div>
-              <div class="flex justify-end mb-0.5">
-                <span class="text-[10px] text-stone-400 uppercase tracking-wider"><span x-text="(drawer.data.item2 || '').length"></span> / 24</span>
-              </div>
               <input type="text" x-model="drawer.data.item2" maxlength="24" placeholder="Name or phrase..." class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+              <p class="text-[10px] text-stone-400 mt-1.5 uppercase tracking-wider">Name (<span x-text="(drawer.data.item2 || '').length"></span> / 24 chars)</p>
             </div>
           </div>
 
