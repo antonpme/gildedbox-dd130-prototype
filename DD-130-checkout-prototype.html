@@ -117,9 +117,8 @@
                     <!-- Same mode: small label + address dropdown -->
                     <div x-show="shipment.addressMode === 'same'">
                       <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-1 leading-tight">
-                        <span class="text-stone-800">Shipment <span x-text="sIdx + 1"></span><span x-show="product.shipments.length > 1"> of <span x-text="product.shipments.length"></span></span></span>
-                        <template x-if="shipToName(shipment)"><span> · Ships to <span class="text-stone-800 font-bold" x-text="shipToName(shipment)"></span></span></template>
-                        <template x-if="!shipToName(shipment)"><span> · Ships to</span></template>
+                        <template x-if="shipToName(shipment)"><span>Ships to <span class="text-stone-800 font-bold" x-text="shipToName(shipment)"></span></span></template>
+                        <template x-if="!shipToName(shipment)"><span class="text-stone-800">Ships to</span></template>
                       </p>
                       <div class="relative inline-block max-w-full">
                         <button @click="shipToOpen = !shipToOpen" class="text-left inline-flex items-center gap-2 hover:opacity-70 group p-0">
@@ -145,7 +144,7 @@
                     <!-- Different mode: small label + dynamic summary (mirrors Same mode's two-line structure) -->
                     <div x-show="shipment.addressMode === 'different'">
                       <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-1 leading-tight">
-                        <span class="text-stone-800">Shipment <span x-text="sIdx + 1"></span><span x-show="product.shipments.length > 1"> of <span x-text="product.shipments.length"></span></span></span> · Per-recipient addresses
+                        <span class="text-stone-800">Per-recipient addresses</span>
                       </p>
                       <p class="font-serif text-lg text-stone-900 leading-tight" x-text="differentSummary(shipment)"></p>
                     </div>
@@ -201,12 +200,15 @@
               <!-- Defer banner — subtle inline notice -->
               <div x-show="shipment.detailsMode === 'later'" class="flex items-start gap-3 py-1 text-sm">
                 <svg class="w-4 h-4 text-stone-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
-                <div class="flex-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span class="text-stone-700">We'll email a magic link to complete details later.</span>
-                  <span class="inline-flex items-center gap-2">
-                    <span class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Deadline</span>
-                    <input type="date" x-model="shipment.deadline" class="text-xs bg-transparent border-0 border-b border-zinc-400 px-0 py-0.5 focus:outline-none focus:border-zinc-700">
-                  </span>
+                <div class="flex-1 space-y-1">
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span class="text-stone-700">We'll email a magic link to complete details later.</span>
+                    <span class="inline-flex items-center gap-2">
+                      <span class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Deadline</span>
+                      <input type="date" x-model="shipment.deadline" class="text-xs bg-transparent border-0 border-b border-zinc-400 px-0 py-0.5 focus:outline-none focus:border-zinc-700">
+                    </span>
+                  </div>
+                  <p class="text-xs text-stone-500 leading-snug">Your order will be placed and charged now, but nothing ships until your recipients complete personalization on the portal via the magic link.</p>
                 </div>
               </div>
 
@@ -448,13 +450,6 @@
               </div>
             </section>
           </template>
-
-          <!-- Add Shipment within this product -->
-          <button @click="addShipment(product.id)" class="w-full flex items-center justify-center gap-2 py-3 bg-stone-50 border-2 border-dashed border-stone-300 rounded-lg text-sm font-medium hover:border-black hover:bg-white">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Add shipment
-            <span class="text-stone-500 text-xs ml-2">(another address group for this product)</span>
-          </button>
 
         </div>
       </div>
@@ -740,12 +735,12 @@
 </div>
 
 <!-- ====================================================== -->
-<!-- ===== ADDRESS DRAWER ==== -->
+<!-- ===== ADDRESS DRAWER (Tiffany style + Address book picker) ==== -->
 <!-- ====================================================== -->
-<div x-show="drawer.open && drawer.type === 'address'" x-cloak class="fixed inset-0 z-40">
+<div x-show="drawer.open && drawer.type === 'address'" x-cloak class="fixed inset-0 z-40" x-data="{ bookOpen: false }" x-effect="if (!drawer.open) bookOpen = false">
   <div class="absolute inset-0 bg-black/30" @click="closeDrawer()"></div>
-  <aside class="absolute right-0 top-0 bottom-0 w-[520px] bg-white shadow-2xl drawer-enter overflow-y-auto">
-    <div class="sticky top-0 bg-white border-b border-stone-200 px-6 py-4 flex items-center justify-between">
+  <aside class="absolute right-0 top-0 bottom-0 w-[560px] bg-white shadow-2xl drawer-enter overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-stone-200 px-8 py-4 flex items-center justify-between z-10">
       <div>
         <h3 class="font-serif text-2xl" x-text="drawer.addressBookMode ? 'Add new address' : 'Shipping address'"></h3>
         <p class="text-xs text-stone-500 mt-0.5" x-show="drawer.addressBookMode">Saved to address book, then selected as Ship To</p>
@@ -753,59 +748,88 @@
       </div>
       <button @click="closeDrawer()" class="p-1 text-stone-400 hover:text-black"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
     </div>
-    <div class="p-6 space-y-5">
+    <div class="px-8 py-8 space-y-7">
 
-      <!-- Details (name + company) -->
-      <div class="space-y-3 pb-5 border-b border-stone-200">
-        <p class="text-xs font-semibold uppercase tracking-wider text-stone-700">Details</p>
-        <div class="grid grid-cols-2 gap-3">
+      <!-- Address book picker (per-recipient mode only — skip when creating a new book entry) -->
+      <div x-show="!drawer.addressBookMode" class="space-y-2">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Use a saved address</p>
+        <div class="relative">
+          <button @click="bookOpen = !bookOpen" class="w-full flex items-center justify-between text-left h-16 bg-transparent border-0 border-b border-zinc-400 px-0 hover:border-zinc-700 focus:outline-none focus:border-zinc-700 focus:border-b-2 transition">
+            <span class="text-base text-zinc-400">Choose from address book…</span>
+            <svg class="w-4 h-4 text-stone-500 transition-transform" :class="bookOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+          </button>
+          <div x-show="bookOpen" @click.outside="bookOpen = false" x-cloak class="menu-enter absolute left-0 right-0 top-full mt-2 bg-white border border-stone-200 rounded-md shadow-lg z-30 overflow-hidden">
+            <template x-for="addr in addressBook" :key="'book-' + addr.id">
+              <button @click="useAddressBookEntry(addr.id); bookOpen = false" class="w-full text-left px-4 py-3 hover:bg-stone-50 border-b border-stone-100 last:border-0">
+                <p class="text-sm font-medium text-stone-900" x-text="addr.name"></p>
+                <p class="text-xs text-stone-500 truncate mt-0.5" x-text="addr.label"></p>
+              </button>
+            </template>
+          </div>
+        </div>
+        <p class="text-[11px] text-stone-400">Or fill in a new address below.</p>
+      </div>
+
+      <!-- Details -->
+      <div class="space-y-5">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Details</p>
+        <div class="grid grid-cols-2 gap-5">
           <div>
-            <label class="text-xs font-medium text-stone-600 block mb-1.5">Full name <span class="text-red-500">*</span></label>
-            <input type="text" x-model="drawer.data.name" placeholder="Anton Parkhomenko" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">Full name <span class="text-red-500">*</span></label>
+            <input type="text" x-model="drawer.data.name" placeholder="Anton Parkhomenko" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
           </div>
           <div>
-            <label class="text-xs font-medium text-stone-600 block mb-1.5">Company <span class="text-stone-400 font-normal">(optional)</span></label>
-            <input type="text" x-model="drawer.data.company" placeholder="GildedBox" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">Company <span class="text-stone-400 font-normal normal-case tracking-normal">(optional)</span></label>
+            <input type="text" x-model="drawer.data.company" placeholder="GildedBox" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
           </div>
         </div>
         <div>
-          <label class="text-xs font-medium text-stone-600 block mb-1.5">Phone <span class="text-stone-400 font-normal">(for delivery)</span></label>
-          <input type="tel" x-model="drawer.data.phone" placeholder="+1 555 123 4567" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+          <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">Phone <span class="text-stone-400 font-normal normal-case tracking-normal">(for delivery)</span></label>
+          <input type="tel" x-model="drawer.data.phone" placeholder="+1 555 123 4567" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
         </div>
       </div>
 
-      <!-- Address fields -->
-      <div class="space-y-3">
-        <p class="text-xs font-semibold uppercase tracking-wider text-stone-700">Address</p>
+      <!-- Address -->
+      <div class="space-y-5">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Address</p>
         <div>
-          <label class="text-xs font-medium text-stone-600 block mb-1.5">Street <span class="text-red-500">*</span></label>
-          <input type="text" x-model="drawer.data.street" placeholder="123 Main St" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+          <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">Street <span class="text-red-500">*</span></label>
+          <input type="text" x-model="drawer.data.street" placeholder="123 Main St" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
         </div>
         <div>
-          <label class="text-xs font-medium text-stone-600 block mb-1.5">Apt / Suite <span class="text-stone-400 font-normal">(optional)</span></label>
-          <input type="text" x-model="drawer.data.apt" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+          <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">Apt / Suite <span class="text-stone-400 font-normal normal-case tracking-normal">(optional)</span></label>
+          <input type="text" x-model="drawer.data.apt" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
         </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div><label class="text-xs font-medium text-stone-600 block mb-1.5">City <span class="text-red-500">*</span></label><input type="text" x-model="drawer.data.city" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"></div>
-          <div><label class="text-xs font-medium text-stone-600 block mb-1.5">State <span class="text-red-500">*</span></label><input type="text" x-model="drawer.data.state" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"></div>
-          <div><label class="text-xs font-medium text-stone-600 block mb-1.5">ZIP <span class="text-red-500">*</span></label><input type="text" x-model="drawer.data.zip" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black" :class="!drawer.data.zip ? '' : 'border-stone-200'"></div>
+        <div class="grid grid-cols-3 gap-5">
+          <div>
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">City <span class="text-red-500">*</span></label>
+            <input type="text" x-model="drawer.data.city" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">State <span class="text-red-500">*</span></label>
+            <input type="text" x-model="drawer.data.state" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">ZIP <span class="text-red-500">*</span></label>
+            <input type="text" x-model="drawer.data.zip" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+          </div>
         </div>
         <div>
-          <label class="text-xs font-medium text-stone-600 block mb-1.5">Country <span class="text-red-500">*</span></label>
-          <select x-model="drawer.data.country" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"><option>United States</option><option>Canada</option><option>Italy</option><option>United Kingdom</option><option>Germany</option><option>France</option></select>
+          <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">Country <span class="text-red-500">*</span></label>
+          <select x-model="drawer.data.country" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 transition appearance-none cursor-pointer"><option>United States</option><option>Canada</option><option>Italy</option><option>United Kingdom</option><option>Germany</option><option>France</option></select>
         </div>
       </div>
 
-      <!-- Shipping method (only for per-recipient mode, NOT for address book mode) -->
-      <div x-show="!drawer.addressBookMode" class="pt-5 border-t border-stone-200 space-y-3">
-        <p class="text-xs font-semibold uppercase tracking-wider text-stone-700">Shipping for this address</p>
+      <!-- Shipping method (only for per-recipient mode, NOT for address book creation) -->
+      <div x-show="!drawer.addressBookMode" class="space-y-3">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Shipping for this address</p>
         <div class="space-y-2">
           <template x-for="opt in shippingOptions" :key="'sh-'+opt.id">
-            <label class="flex items-center justify-between p-3 border border-stone-200 rounded-md cursor-pointer hover:border-stone-400 transition" :class="drawer.data.shipping === opt.id ? 'border-stone-900 bg-stone-50' : ''">
+            <label class="flex items-center justify-between p-3 border rounded-md cursor-pointer transition" :class="drawer.data.shipping === opt.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200 hover:border-stone-400'">
               <span class="flex items-center gap-3">
                 <input type="radio" name="drawer-shipping" :value="opt.id" x-model="drawer.data.shipping" class="accent-black w-4 h-4">
                 <span>
-                  <span class="text-sm font-medium" x-text="opt.label"></span>
+                  <span class="text-sm font-medium block leading-tight" x-text="opt.label"></span>
                   <span class="block text-[11px] text-stone-500" x-text="opt.eta"></span>
                 </span>
               </span>
@@ -821,9 +845,9 @@
         <span>Shipping method will be selected at the shipment level after saving.</span>
       </div>
     </div>
-    <div class="sticky bottom-0 bg-white border-t border-stone-200 px-6 py-4 flex items-center justify-between">
+    <div class="sticky bottom-0 bg-white border-t border-stone-200 px-8 py-4 flex items-center justify-between">
       <button @click="closeDrawer()" class="text-sm text-stone-600 hover:text-black">Cancel</button>
-      <button @click="saveAddress()" class="px-5 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium" x-text="drawer.addressBookMode ? 'Save & use for this shipment' : 'Save address & shipping'"></button>
+      <button @click="saveAddress()" class="px-6 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium" x-text="drawer.addressBookMode ? 'Save & use for this shipment' : 'Save address & shipping'"></button>
     </div>
   </aside>
 </div>
@@ -1235,6 +1259,12 @@ function checkoutApp() {
         data: { item1: r.item1 || '', item2: r.item2 || '' }
       };
     },
+    useAddressBookEntry(id) {
+      const addr = this.addressBook.find(a => a.id === id);
+      if (!addr) return;
+      const parsed = this.parseAddress(addr.label);
+      Object.assign(this.drawer.data, { name: addr.name, ...parsed });
+    },
     parseAddress(label) {
       const empty = { street: '', apt: '', city: '', state: '', zip: '', country: 'United States' };
       if (!label) return empty;
@@ -1258,14 +1288,9 @@ function checkoutApp() {
     openAddressDrawer(productId, shipmentId, recipientId) {
       const r = this.findRecipient(productId, shipmentId, recipientId);
       const parsed = this.parseAddress(r && r.address);
-      // Shipping: keep null intent for pre-loaded recipients; default 'ground' only for fresh ones.
-      let shipping;
-      if (r && r.shipping) shipping = r.shipping;
-      else if (r && r.shipping === null) shipping = null;
-      else shipping = 'ground';
       this.drawer = {
         open: true, type: 'address', productId, shipmentId, recipientId, master: false, addressBookMode: false,
-        data: { name: (r && r.name) || '', company: '', phone: '', ...parsed, shipping }
+        data: { name: (r && r.name) || '', company: '', phone: '', ...parsed, shipping: (r && r.shipping) || 'ground' }
       };
     },
     openAddressBookDrawer(productId, shipmentId) {
