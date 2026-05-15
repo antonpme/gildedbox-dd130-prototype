@@ -315,7 +315,7 @@
                           <input type="text" x-model="recipient.name" :placeholder="shipment.detailsMode === 'later' ? 'Will be added later' : 'Recipient name'" :disabled="shipment.detailsMode === 'later'" class="w-full bg-transparent text-sm font-medium focus:outline-none focus:bg-white focus:border focus:border-stone-300 focus:px-2 focus:rounded px-0 py-1 disabled:text-stone-400">
                           <p x-show="recipient.hasError" class="text-red-600 text-xs mt-1" x-text="recipient.errorMsg"></p>
                         </td>
-                        <td class="p-3">
+                        <td class="p-3" @click.stop>
                           <div class="inline-flex items-center bg-white border border-stone-300 rounded overflow-hidden" :class="shipment.detailsMode === 'later' ? 'opacity-40' : ''">
                             <button @click="recipient.qty > 1 && recipient.qty--" :disabled="shipment.detailsMode === 'later'" class="px-2 py-1 text-stone-500 hover:bg-stone-100 hover:text-black disabled:cursor-not-allowed">
                               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
@@ -332,17 +332,10 @@
                             <template x-if="recipient.address">
                               <span class="block max-w-full">
                                 <span class="block truncate text-stone-800" :title="recipient.address" x-text="recipient.address"></span>
-                                <template x-if="recipient.shipping">
-                                  <span class="block text-[10px] text-stone-500 mt-0.5 uppercase tracking-wider">
-                                    <span x-text="shippingLabel(recipient.shipping)"></span>
-                                    · $<span x-text="shippingCost(recipient.shipping)"></span>
-                                  </span>
-                                </template>
-                                <template x-if="!recipient.shipping">
-                                  <span class="block text-[10px] text-amber-700 mt-0.5 uppercase tracking-wider font-medium">
-                                    Select shipping →
-                                  </span>
-                                </template>
+                                <span class="block text-[10px] text-stone-500 mt-0.5 uppercase tracking-wider">
+                                  <span x-text="shippingLabel(recipient.shipping || 'ground')"></span>
+                                  · $<span x-text="shippingCost(recipient.shipping || 'ground')"></span>
+                                </span>
                               </span>
                             </template>
                             <template x-if="!recipient.address">
@@ -967,7 +960,7 @@ function checkoutApp() {
           id: 11,
           addressMode: 'same',
           detailsMode: 'now',
-          shipping: null,
+          shipping: 'ground',
           deadline: '2025-08-15',
           page: 1,
           shipToId: null,
@@ -1020,11 +1013,11 @@ function checkoutApp() {
           shipToId: null,
           shipToLabel: '',
           recipients: [
-            { id: 211, name: 'Yuki Tanaka',    qty: 1, item1: 'YT', item2: 'Yuki',   greeting: { to: 'Yuki',   message: 'Thanks for hustle this quarter. You moved mountains.', from: 'Engineering', fromMaster: false, custom: true }, address: '5 Bay St, San Francisco, CA, 94103, US',  shipping: null, selected: false },
-            { id: 212, name: 'Léa Bernard',    qty: 1, item1: 'LB', item2: 'Léa',    greeting: { to: 'Léa',    message: 'Three years and counting. Thank you.',                from: 'CEO',         fromMaster: false, custom: true }, address: '9 River Ct, Denver, CO, 80202, US',      shipping: null, selected: false },
-            { id: 213, name: 'Henrik Larsson', qty: 1, item1: 'HL', item2: 'Henrik', greeting: { to: 'Henrik', message: 'For everything you do behind the scenes.',           from: 'Ops',         fromMaster: false, custom: true }, address: '64 Hill Rd, Boulder, CO, 80301, US',     shipping: null, selected: false },
-            { id: 214, name: 'Aisha Patel',    qty: 2, item1: 'AP', item2: 'Aisha',  greeting: { to: 'Aisha',  message: 'Welcome aboard. Glad you joined us.',                from: 'People Ops',  fromMaster: false, custom: true }, address: '12 Park Ave, NY, NY, 10016, US',         shipping: null, selected: false },
-            { id: 215, name: 'Theo Mendez',    qty: 1, item1: 'TM', item2: 'Theo',   greeting: { to: 'Theo',   message: 'Year one in the books. Onward!',                    from: 'The team',    fromMaster: false, custom: true }, address: '301 Mission St, SF, CA, 94105, US',      shipping: null, selected: false }
+            { id: 211, name: 'Yuki Tanaka',    qty: 1, item1: 'YT', item2: 'Yuki',   greeting: { to: 'Yuki',   message: 'Thanks for hustle this quarter. You moved mountains.', from: 'Engineering', fromMaster: false, custom: true }, address: '5 Bay St, San Francisco, CA, 94103, US',  shipping: 'ground', selected: false },
+            { id: 212, name: 'Léa Bernard',    qty: 1, item1: 'LB', item2: 'Léa',    greeting: { to: 'Léa',    message: 'Three years and counting. Thank you.',                from: 'CEO',         fromMaster: false, custom: true }, address: '9 River Ct, Denver, CO, 80202, US',      shipping: 'ground', selected: false },
+            { id: 213, name: 'Henrik Larsson', qty: 1, item1: 'HL', item2: 'Henrik', greeting: { to: 'Henrik', message: 'For everything you do behind the scenes.',           from: 'Ops',         fromMaster: false, custom: true }, address: '64 Hill Rd, Boulder, CO, 80301, US',     shipping: 'ground', selected: false },
+            { id: 214, name: 'Aisha Patel',    qty: 2, item1: 'AP', item2: 'Aisha',  greeting: { to: 'Aisha',  message: 'Welcome aboard. Glad you joined us.',                from: 'People Ops',  fromMaster: false, custom: true }, address: '12 Park Ave, NY, NY, 10016, US',         shipping: 'ground', selected: false },
+            { id: 215, name: 'Theo Mendez',    qty: 1, item1: 'TM', item2: 'Theo',   greeting: { to: 'Theo',   message: 'Year one in the books. Onward!',                    from: 'The team',    fromMaster: false, custom: true }, address: '301 Mission St, SF, CA, 94105, US',      shipping: 'ground', selected: false }
           ]
         }]
       };
