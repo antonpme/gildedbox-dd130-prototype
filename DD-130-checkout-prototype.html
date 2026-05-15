@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GildedBox Checkout — DD-130 Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; color: #1c1917; }
+  .font-serif { font-family: 'Cormorant Garamond', serif; }
+  .row-enter { animation: rowIn .25s ease-out; }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .drawer-enter { animation: drawerIn .3s cubic-bezier(.16,1,.3,1); }
+  @keyframes drawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .modal-enter { animation: modalIn .2s ease-out; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+  .menu-enter { animation: menuIn .15s ease-out; }
+  @keyframes menuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  [x-cloak] { display: none !important; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+</style>
+</head>
+<body class="bg-stone-100 min-h-screen" x-data="checkoutApp()" x-cloak>
+
+<!-- ========== DEMO SCENARIO SWITCHER (top bar) ========== -->
+<div class="bg-stone-900 text-white">
+  <div class="max-w-[1600px] 2xl:max-w-[1920px] mx-auto px-12 py-4 flex items-center gap-6">
+    <span class="text-[10px] uppercase tracking-[0.18em] text-stone-400 font-semibold whitespace-nowrap">Demo · Entry point</span>
+    <div class="inline-flex bg-stone-800 rounded-md p-0.5 flex-shrink-0">
+      <button @click="setScenario('customizer')" :class="scenario === 'customizer' ? 'bg-white text-stone-900' : 'text-stone-300 hover:text-white'" class="px-4 py-2 text-xs font-medium rounded transition">
+        From Customizer
+      </button>
+      <button @click="setScenario('portalEmpty')" :class="scenario === 'portalEmpty' ? 'bg-white text-stone-900' : 'text-stone-300 hover:text-white'" class="px-4 py-2 text-xs font-medium rounded transition">
+        From Portal · Empty
+      </button>
+      <button @click="setScenario('portalLoaded')" :class="scenario === 'portalLoaded' ? 'bg-white text-stone-900' : 'text-stone-300 hover:text-white'" class="px-4 py-2 text-xs font-medium rounded transition">
+        From Portal · Loaded list
+      </button>
+    </div>
+    <span class="text-xs text-stone-400 flex-1 leading-snug" x-show="scenario === 'customizer'">
+      Customer arrived from the 3D Customizer. One recipient already has personalization, but address and shipping aren't set yet.
+    </span>
+    <span class="text-xs text-stone-400 flex-1 leading-snug" x-show="scenario === 'portalEmpty'">
+      Fresh checkout from the portal. No recipients yet — user adds them from scratch or uploads a CSV.
+    </span>
+    <span class="text-xs text-stone-400 flex-1 leading-snug" x-show="scenario === 'portalLoaded'">
+      From portal with a company list pre-loaded. Names, addresses, and personalization are filled. Pick shipping per recipient.
+    </span>
+  </div>
+</div>
+
+<!-- ========== TOP HEADER ========== -->
+<div class="max-w-[1600px] 2xl:max-w-[1920px] mx-auto px-12 pt-8 pb-4">
+  <div class="flex items-center justify-between">
+    <h1 class="font-serif text-5xl font-medium">Checkout</h1>
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-stone-500">Prototype for DD-130</span>
+      <button @click="resetDemo()" class="text-stone-600 hover:text-black underline underline-offset-4">Reset demo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MAIN CONTAINER ========== -->
+<main class="max-w-[1600px] 2xl:max-w-[1920px] mx-auto px-12 pb-24 space-y-6">
+
+  <!-- ========== PRODUCT CARDS ========== -->
+  <template x-for="(product, pIdx) in products" :key="product.id">
+    <article class="bg-white rounded-xl border border-stone-200">
+      <div class="grid grid-cols-[510px_1fr]">
+
+        <!-- ===== LEFT: product image (anchored to top, fixed offset — stays put across all scenarios) ===== -->
+        <div class="bg-stone-50 border-r border-stone-200 rounded-l-xl px-12 pt-48 pb-12 flex flex-col items-center">
+          <img :src="product.image" :alt="product.name" class="w-full object-contain">
+          <button @click="removeProduct(pIdx)" class="mt-10 inline-flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-red-600 transition uppercase tracking-wider">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+            Remove from order
+          </button>
+        </div>
+
+        <!-- ===== RIGHT: product header + shipments ===== -->
+        <div class="p-8 space-y-4">
+
+          <!-- ===== Product header ===== -->
+          <div class="flex items-start justify-between pb-2">
+            <div>
+              <h2 class="font-serif text-3xl font-medium" x-text="product.name"></h2>
+              <p class="text-stone-500 text-sm mt-1">
+                <span x-text="product.shipments.length"></span> shipment<span x-show="product.shipments.length > 1">s</span>
+                · <span x-text="productGifts(product)"></span> gift<span x-show="productGifts(product) !== 1">s</span> total
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-stone-500 text-xs uppercase tracking-wider">Product total</p>
+              <p class="font-serif text-3xl font-medium">$<span x-text="productTotal(product).toLocaleString()"></span></p>
+            </div>
+          </div>
+
+          <!-- ===== SHIPMENTS within this product ===== -->
+          <template x-for="(shipment, sIdx) in product.shipments" :key="shipment.id">
+            <section class="border border-stone-200 rounded-lg bg-white">
+
+              <!-- ===== SHIPMENT HEADER (single line: Ships to / notice + Same/Different toggle) ===== -->
+              <header class="bg-stone-50 border-b border-stone-200 rounded-t-lg px-6 py-4" x-data="{ shipToOpen: false }">
+                <!-- min-h-[44px] pins inner row height so Same/Different toggle doesn't bounce the header -->
+                <div class="flex items-center justify-between gap-4 min-h-[44px]">
+
+                  <!-- LEFT: Ships to (Same mode) or notice (Different mode) -->
+                  <div class="flex-1 min-w-0">
+
+                    <!-- Same mode: small label + address dropdown -->
+                    <div x-show="shipment.addressMode === 'same'">
+                      <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-1 leading-tight">
+                        <span class="text-stone-800">Shipment <span x-text="sIdx + 1"></span><span x-show="product.shipments.length > 1"> of <span x-text="product.shipments.length"></span></span></span>
+                        <template x-if="shipToName(shipment)"><span> · Ships to <span class="text-stone-800 font-bold" x-text="shipToName(shipment)"></span></span></template>
+                        <template x-if="!shipToName(shipment)"><span> · Ships to</span></template>
+                      </p>
+                      <div class="relative inline-block max-w-full">
+                        <button @click="shipToOpen = !shipToOpen" class="text-left inline-flex items-center gap-2 hover:opacity-70 group p-0">
+                          <span class="font-serif text-lg leading-tight text-stone-900 truncate max-w-[560px]" x-text="shipment.shipToLabel || 'Select an address'"></span>
+                          <svg class="w-3.5 h-3.5 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                          <svg class="w-3.5 h-3.5 text-stone-400 flex-shrink-0 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"/></svg>
+                        </button>
+                        <div x-show="shipToOpen" @click.outside="shipToOpen = false" x-cloak class="menu-enter absolute left-0 top-full mt-2 w-[440px] bg-white border border-stone-200 rounded-md shadow-lg z-30 overflow-hidden">
+                          <template x-for="addr in addressBook" :key="addr.id">
+                            <button @click="shipment.shipToLabel = addr.label; shipment.shipToId = addr.id; shipToOpen = false" class="w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 border-b border-stone-100 last:border-0">
+                              <p class="font-medium" x-text="addr.name"></p>
+                              <p class="text-xs text-stone-500 truncate" x-text="addr.label"></p>
+                            </button>
+                          </template>
+                          <button @click="shipToOpen = false; openAddressBookDrawer(product.id, shipment.id)" class="w-full text-left px-4 py-2.5 text-sm bg-stone-50 hover:bg-stone-100 flex items-center gap-2 font-medium border-t border-stone-200">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            Add new address
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Different mode: small label + dynamic summary (mirrors Same mode's two-line structure) -->
+                    <div x-show="shipment.addressMode === 'different'">
+                      <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-1 leading-tight">
+                        <span class="text-stone-800">Shipment <span x-text="sIdx + 1"></span><span x-show="product.shipments.length > 1"> of <span x-text="product.shipments.length"></span></span></span> · Per-recipient addresses
+                      </p>
+                      <p class="font-serif text-lg text-stone-900 leading-tight" x-text="differentSummary(shipment)"></p>
+                    </div>
+                  </div>
+
+                  <!-- RIGHT: Same/Different toggle + Remove -->
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <div class="inline-flex bg-white rounded-md p-0.5 border border-stone-200">
+                      <button @click="shipment.addressMode='same'" :class="shipment.addressMode==='same' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:text-black'" class="px-3 py-1.5 text-xs font-medium rounded transition">Same for all</button>
+                      <button @click="shipment.addressMode='different'" :class="shipment.addressMode==='different' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:text-black'" class="px-3 py-1.5 text-xs font-medium rounded transition">Different per recipient</button>
+                    </div>
+                    <button x-show="product.shipments.length > 1" @click="removeShipment(product.id, shipment.id)" class="flex items-center gap-1.5 px-2 py-1.5 text-xs text-stone-500 hover:text-red-600 hover:bg-red-50 rounded">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <!-- ===== SHIPMENT BODY ===== -->
+              <div class="p-6 space-y-4">
+
+              <!-- Shipping Method — only when Same for all. Auto-fit grid scales for 2/3/4+ options. -->
+              <div x-show="shipment.addressMode === 'same'" class="space-y-2">
+                <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Shipping</p>
+                <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2">
+                  <template x-for="opt in shippingOptions" :key="'ship-'+opt.id">
+                    <label
+                      :class="shipment.shipping === opt.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200 bg-white hover:border-stone-400'"
+                      class="cursor-pointer border rounded-md p-3 flex items-center justify-between transition">
+                      <span class="flex items-center gap-2.5 min-w-0">
+                        <input type="radio" :name="'ship-' + shipment.id" :value="opt.id" x-model="shipment.shipping" class="accent-black w-4 h-4 flex-shrink-0">
+                        <span class="min-w-0">
+                          <span class="text-sm font-medium block leading-tight truncate" x-text="opt.label"></span>
+                          <span class="text-[11px] text-stone-500 block truncate" x-text="opt.eta"></span>
+                        </span>
+                      </span>
+                      <span class="text-sm font-medium flex-shrink-0 ml-2">$<span x-text="opt.cost"></span></span>
+                    </label>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Details toggle: aligned LEFT under Shipping -->
+              <div class="flex items-center gap-3">
+                <span class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Details</span>
+                <div class="inline-flex bg-stone-100 rounded-md p-0.5">
+                  <button @click="shipment.detailsMode='now'" :class="shipment.detailsMode==='now' ? 'bg-white shadow-sm text-black' : 'text-stone-600'" class="px-3 py-1.5 text-xs font-medium rounded transition">Add now</button>
+                  <button @click="shipment.detailsMode='later'" :class="shipment.detailsMode==='later' ? 'bg-white shadow-sm text-black' : 'text-stone-600'" class="px-3 py-1.5 text-xs font-medium rounded transition">I'll do it later</button>
+                </div>
+              </div>
+
+              <!-- Defer banner — subtle inline notice -->
+              <div x-show="shipment.detailsMode === 'later'" class="flex items-start gap-3 py-1 text-sm">
+                <svg class="w-4 h-4 text-stone-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+                <div class="flex-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span class="text-stone-700">We'll email a magic link to complete details later.</span>
+                  <span class="inline-flex items-center gap-2">
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Deadline</span>
+                    <input type="date" x-model="shipment.deadline" class="text-xs bg-transparent border-0 border-b border-zinc-400 px-0 py-0.5 focus:outline-none focus:border-zinc-700">
+                  </span>
+                </div>
+              </div>
+
+              <!-- Personalization header + bulk -->
+              <div class="flex items-center justify-between pt-2">
+                <div>
+                  <h3 class="font-serif text-2xl">Personalization</h3>
+                  <p class="text-stone-500 text-xs mt-1" x-show="selectedCount(shipment) === 0">Click any cell to add details, or use Bulk Actions to handle many at once.</p>
+                  <p class="text-blue-700 text-xs mt-1 font-medium" x-show="selectedCount(shipment) > 0"><span x-text="selectedCount(shipment)"></span> selected</p>
+                </div>
+                <div class="relative">
+                  <button @click="bulkMenuOpen = bulkMenuOpen === shipment.id ? null : shipment.id" class="flex items-center gap-2 px-4 py-2.5 text-xs font-medium uppercase tracking-wider border border-stone-300 rounded-md hover:bg-stone-50 bg-white">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/></svg>
+                    <span>Bulk Actions</span>
+                    <svg class="w-3 h-3 ml-1 transition-transform" :class="bulkMenuOpen === shipment.id ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                  </button>
+                  <div x-show="bulkMenuOpen === shipment.id" x-cloak @click.outside="bulkMenuOpen = null" class="menu-enter absolute right-0 top-full mt-2 w-80 bg-white border border-stone-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <div class="p-2">
+                      <div class="px-3 pt-2 pb-1.5 text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Import & export</div>
+                      <button @click="downloadTemplate()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded text-sm text-left">
+                        <svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                        <span>Download CSV template</span>
+                      </button>
+                      <button @click="openCSVModal(product.id, shipment.id)" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-stone-50 rounded text-sm text-left">
+                        <svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                        <span>Upload CSV</span>
+                      </button>
+                    </div>
+                    <div class="border-t border-stone-100 p-2">
+                      <div class="px-3 pt-2 pb-1.5 text-[10px] uppercase tracking-wider text-stone-400 font-semibold">
+                        Apply to <span x-text="selectedCount(shipment)"></span> selected
+                      </div>
+                      <p x-show="applyDisabledReason(shipment)" class="px-3 pb-1.5 text-[11px] text-amber-700 italic" x-text="applyDisabledReason(shipment)"></p>
+                      <button
+                        :disabled="!!applyDisabledReason(shipment)"
+                        :class="applyDisabledReason(shipment) ? 'opacity-40 cursor-not-allowed' : 'hover:bg-stone-50'"
+                        :title="applyDisabledReason(shipment)"
+                        @click="!applyDisabledReason(shipment) && bulkApply(product.id, shipment.id, 'greeting')"
+                        class="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-left">
+                        <svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25"/></svg>
+                        <span>Apply greeting card</span>
+                      </button>
+                      <button
+                        :disabled="!!applyDisabledReason(shipment)"
+                        :class="applyDisabledReason(shipment) ? 'opacity-40 cursor-not-allowed' : 'hover:bg-stone-50'"
+                        :title="applyDisabledReason(shipment)"
+                        @click="!applyDisabledReason(shipment) && bulkApply(product.id, shipment.id, 'item')"
+                        class="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-left">
+                        <svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"/></svg>
+                        <span>Apply gift personalization</span>
+                      </button>
+                      <button
+                        :disabled="!!applyDisabledReason(shipment)"
+                        :class="applyDisabledReason(shipment) ? 'opacity-40 cursor-not-allowed' : 'hover:bg-stone-50'"
+                        :title="applyDisabledReason(shipment)"
+                        @click="!applyDisabledReason(shipment) && bulkApply(product.id, shipment.id, 'video')"
+                        class="w-full flex items-center gap-3 px-3 py-2 rounded text-sm text-left">
+                        <svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+                        <span>Attach video message</span>
+                      </button>
+                    </div>
+                    <div class="border-t border-stone-100 p-2" x-show="selectedCount(shipment) > 0">
+                      <div class="px-3 pt-2 pb-1.5 text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Selected rows</div>
+                      <button @click="bulkClear(product.id, shipment.id)" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-red-50 text-red-600 rounded text-sm text-left">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166"/></svg>
+                        <span>Clear personalization</span>
+                      </button>
+                      <button @click="bulkDelete(product.id, shipment.id)" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-red-50 text-red-600 rounded text-sm text-left">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <span>Remove recipients</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Table — flat, no outer border, no row backgrounds. table-fixed so Item 1/2/Greeting share remaining space proportionally -->
+              <div>
+                <table class="w-full table-fixed">
+                  <thead class="border-b border-stone-200">
+                    <tr class="text-xs uppercase tracking-wider text-stone-500">
+                      <th class="w-10 p-3"><input type="checkbox" @change="toggleAllSelected(shipment, $event.target.checked)" :checked="allSelected(shipment)" class="accent-black w-4 h-4"></th>
+                      <th class="text-left p-3 font-medium w-[240px]">
+                        <button class="flex items-center gap-1.5 hover:text-black">Recipient Full Name <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"/></svg></button>
+                      </th>
+                      <th class="text-left p-3 font-medium w-28">Qty</th>
+                      <th class="text-left p-3 pl-8 font-medium" x-show="shipment.addressMode === 'different'">Address</th>
+                      <th class="text-left p-3 pl-8 font-medium">Item 1</th>
+                      <th class="text-left p-3 font-medium">Item 2</th>
+                      <th class="text-left p-3 font-medium">Greeting Card</th>
+                      <th class="p-3 w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="recipient in paginatedRecipients(shipment)" :key="recipient.id">
+                      <tr @click="shipment.detailsMode === 'now' ? openRecipientDrawer(product.id, shipment.id, recipient.id) : null"
+                          class="border-b border-stone-100 row-enter"
+                          :class="[
+                            recipient.hasError ? 'bg-red-50/40' : '',
+                            shipment.detailsMode === 'now' ? 'cursor-pointer hover:bg-stone-50' : 'hover:bg-stone-50/50'
+                          ]">
+                        <td class="p-3" @click.stop><input type="checkbox" x-model="recipient.selected" class="accent-black w-4 h-4"></td>
+                        <td class="p-3" @click.stop>
+                          <input type="text" x-model="recipient.name" :placeholder="shipment.detailsMode === 'later' ? 'Will be added later' : 'Recipient name'" :disabled="shipment.detailsMode === 'later'" class="w-full bg-transparent text-sm font-medium focus:outline-none focus:bg-white focus:border focus:border-stone-300 focus:px-2 focus:rounded px-0 py-1 disabled:text-stone-400">
+                          <p x-show="recipient.hasError" class="text-red-600 text-xs mt-1" x-text="recipient.errorMsg"></p>
+                        </td>
+                        <td class="p-3">
+                          <div class="inline-flex items-center bg-white border border-stone-300 rounded overflow-hidden" :class="shipment.detailsMode === 'later' ? 'opacity-40' : ''">
+                            <button @click="recipient.qty > 1 && recipient.qty--" :disabled="shipment.detailsMode === 'later'" class="px-2 py-1 text-stone-500 hover:bg-stone-100 hover:text-black disabled:cursor-not-allowed">
+                              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
+                            </button>
+                            <input type="number" x-model.number="recipient.qty" min="1" :disabled="shipment.detailsMode === 'later'" class="w-10 text-center text-sm font-medium bg-transparent border-x border-stone-200 py-1 focus:outline-none focus:bg-stone-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]">
+                            <button @click="recipient.qty++" :disabled="shipment.detailsMode === 'later'" class="px-2 py-1 text-stone-500 hover:bg-stone-100 hover:text-black disabled:cursor-not-allowed">
+                              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            </button>
+                          </div>
+                        </td>
+                        <!-- Address + shipping (only when shipment.addressMode === 'different') -->
+                        <td class="p-3 pl-8 align-top" x-show="shipment.addressMode === 'different'" @click.stop>
+                          <button @click.stop="openAddressDrawer(product.id, shipment.id, recipient.id)" x-show="shipment.detailsMode === 'now'" class="block w-full text-left text-xs text-stone-600 hover:text-stone-900">
+                            <template x-if="recipient.address">
+                              <span class="block max-w-full">
+                                <span class="block truncate text-stone-800" :title="recipient.address" x-text="recipient.address"></span>
+                                <template x-if="recipient.shipping">
+                                  <span class="block text-[10px] text-stone-500 mt-0.5 uppercase tracking-wider">
+                                    <span x-text="shippingLabel(recipient.shipping)"></span>
+                                    · $<span x-text="shippingCost(recipient.shipping)"></span>
+                                  </span>
+                                </template>
+                                <template x-if="!recipient.shipping">
+                                  <span class="block text-[10px] text-amber-700 mt-0.5 uppercase tracking-wider font-medium">
+                                    Select shipping →
+                                  </span>
+                                </template>
+                              </span>
+                            </template>
+                            <template x-if="!recipient.address">
+                              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-stone-400 hover:text-black">
+                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                Add
+                              </span>
+                            </template>
+                          </button>
+                          <span x-show="shipment.detailsMode === 'later'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">via link</span>
+                        </td>
+                        <!-- Item 1 -->
+                        <td class="p-3 pl-8">
+                          <template x-if="shipment.detailsMode === 'later'">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">via link</span>
+                          </template>
+                          <template x-if="shipment.detailsMode === 'now' && recipient.item1">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-stone-100 text-stone-700">
+                              <svg class="w-2.5 h-2.5 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                              Filled
+                            </span>
+                          </template>
+                          <template x-if="shipment.detailsMode === 'now' && !recipient.item1">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-stone-400">
+                              <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
+                              Empty
+                            </span>
+                          </template>
+                        </td>
+                        <!-- Item 2 -->
+                        <td class="p-3">
+                          <template x-if="shipment.detailsMode === 'later'">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">via link</span>
+                          </template>
+                          <template x-if="shipment.detailsMode === 'now' && recipient.item2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-stone-100 text-stone-700">
+                              <svg class="w-2.5 h-2.5 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                              Filled
+                            </span>
+                          </template>
+                          <template x-if="shipment.detailsMode === 'now' && !recipient.item2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-stone-400">
+                              <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
+                              Empty
+                            </span>
+                          </template>
+                        </td>
+                        <!-- Greeting Card -->
+                        <td class="p-3">
+                          <template x-if="shipment.detailsMode === 'later'">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700">via link</span>
+                          </template>
+                          <template x-if="shipment.detailsMode === 'now' && recipient.greeting && recipient.greeting.message">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-stone-100 text-stone-700">
+                              <svg class="w-2.5 h-2.5 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                              Filled
+                            </span>
+                          </template>
+                          <template x-if="shipment.detailsMode === 'now' && (!recipient.greeting || !recipient.greeting.message)">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-stone-400">
+                              <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
+                              Empty
+                            </span>
+                          </template>
+                        </td>
+                        <td class="p-3" @click.stop>
+                          <button @click.stop="removeRecipient(product.id, shipment.id, recipient.id)" class="p-1 text-stone-400 hover:text-red-600" title="Remove recipient">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+
+                <!-- Empty state -->
+                <div x-show="shipment.recipients.length === 0" class="py-10 text-center border-b border-stone-100">
+                  <p class="text-sm text-stone-500">No recipients yet.</p>
+                  <p class="text-xs text-stone-400 mt-1">Click <span class="font-medium">Add recipient</span> below, or use <span class="font-medium">Bulk Actions → Upload CSV</span>.</p>
+                </div>
+
+                <!-- Add Recipient + Pagination — flat -->
+                <div class="flex items-center justify-between pt-4">
+                  <button @click="addRecipient(product.id, shipment.id)" class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-stone-50 rounded">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Add recipient
+                  </button>
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-1" x-show="totalPages(shipment) > 1">
+                      <button @click="shipment.page = Math.max(1, shipment.page - 1)" class="p-1.5 text-stone-400 hover:text-black" :disabled="shipment.page === 1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg></button>
+                      <template x-for="p in pageNumbers(shipment)" :key="p">
+                        <button @click="shipment.page = p" :class="shipment.page === p ? 'bg-black text-white' : 'text-stone-600 hover:bg-stone-100'" class="w-8 h-8 rounded-full text-xs font-medium" x-text="p"></button>
+                      </template>
+                      <button @click="shipment.page = Math.min(totalPages(shipment), shipment.page + 1)" class="p-1.5 text-stone-400 hover:text-black" :disabled="shipment.page === totalPages(shipment)"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></button>
+                    </div>
+                    <span class="text-xs text-stone-500">
+                      <span class="font-medium text-stone-900" x-text="shipment.recipients.length"></span> recipients
+                      · <span class="font-medium text-stone-900" x-text="shipmentGifts(shipment)"></span> gifts
+                      · $<span class="font-medium text-stone-900" x-text="shipmentTotal(product, shipment).toLocaleString()"></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              </div>
+            </section>
+          </template>
+
+          <!-- Add Shipment within this product -->
+          <button @click="addShipment(product.id)" class="w-full flex items-center justify-center gap-2 py-3 bg-stone-50 border-2 border-dashed border-stone-300 rounded-lg text-sm font-medium hover:border-black hover:bg-white">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add shipment
+            <span class="text-stone-500 text-xs ml-2">(another address group for this product)</span>
+          </button>
+
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <!-- ========== PAYMENT / SUMMARY STUB ========== -->
+  <section class="grid grid-cols-2 gap-6 pt-6">
+    <div class="bg-white rounded-xl border border-stone-200 p-8">
+      <h3 class="font-serif text-2xl mb-1">Payment Information</h3>
+      <p class="text-stone-500 text-xs mb-6">Stub — out of scope for this prototype</p>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs font-medium text-stone-600 block mb-1">Billing Address <span class="text-red-500">*</span></label>
+          <select class="w-full bg-stone-50 border border-stone-200 rounded-md px-3 py-2.5 text-sm"><option>— Please Select —</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-stone-200 p-8">
+      <h3 class="font-serif text-2xl mb-1">Order Summary</h3>
+      <p class="text-stone-500 text-xs mb-6">Recalculates live as you edit</p>
+      <div class="space-y-3 text-sm">
+        <template x-for="product in products" :key="'sum-' + product.id">
+          <div class="pb-2 border-b border-stone-100">
+            <div class="flex justify-between font-medium">
+              <span x-text="product.name"></span>
+              <span>$<span x-text="productTotal(product).toLocaleString()"></span></span>
+            </div>
+            <p class="text-xs text-stone-500 mt-0.5">
+              <span x-text="productGifts(product)"></span> gifts ×
+              <span x-text="product.shipments.length"></span> shipment<span x-show="product.shipments.length > 1">s</span>
+            </p>
+          </div>
+        </template>
+        <div class="flex justify-between"><span class="text-stone-600">Sub-Total</span><span class="font-medium">$<span x-text="orderSubtotal().toLocaleString()"></span></span></div>
+        <div class="flex justify-between"><span class="text-stone-600">Shipping (<span x-text="totalShipments()"></span> shipment<span x-show="totalShipments() > 1">s</span>)</span><span class="font-medium">$<span x-text="orderShipping()"></span></span></div>
+        <div class="flex justify-between border-t border-stone-200 pt-2 mt-3"><span class="font-medium">Total</span><span class="font-serif text-xl">$<span x-text="(orderSubtotal() + orderShipping()).toLocaleString()"></span></span></div>
+      </div>
+      <button class="w-full mt-6 py-3 bg-black text-white rounded-md font-medium text-sm hover:bg-stone-800">Place Order →</button>
+      <p class="text-xs text-stone-500 mt-3 text-center" x-show="anyDefer()">Some recipient details will be completed later via magic link</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ====================================================== -->
+<!-- ===== GREETING CARD DRAWER (master mode for Bulk Actions) ==== -->
+<!-- ====================================================== -->
+<div x-show="drawer.open && drawer.type === 'greeting'" x-cloak class="fixed inset-0 z-40">
+  <div class="absolute inset-0 bg-black/30" @click="closeDrawer()"></div>
+  <aside class="absolute right-0 top-0 bottom-0 w-[560px] bg-white shadow-2xl drawer-enter overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-stone-200 px-8 py-4 flex items-center justify-between z-10">
+      <div>
+        <h3 class="font-serif text-2xl" x-text="drawer.master ? 'Greeting card · apply to all' : 'Greeting card'"></h3>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="!drawer.master && currentRecipient()" x-text="'For ' + (currentRecipient() ? currentRecipient().name || 'this recipient' : '')"></p>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="drawer.master">Apply to every recipient. Custom rows are preserved unless overwritten.</p>
+      </div>
+      <button @click="closeDrawer()" class="p-1 text-stone-400 hover:text-black"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="px-8 py-8 space-y-7">
+
+      <div>
+        <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">To</label>
+        <input type="text" x-model="drawer.data.to" placeholder="Recipient name on card" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+        <p class="text-[11px] text-stone-400 mt-1.5" x-show="drawer.master">In apply-to-all mode you can use <code class="bg-stone-100 px-1 rounded text-stone-600">{{name}}</code> for per-row substitution.</p>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-baseline mb-1">
+          <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Message</label>
+          <span class="text-[11px] text-stone-400"><span x-text="(drawer.data.message || '').length"></span> / 280</span>
+        </div>
+        <textarea x-model="drawer.data.message" rows="4" maxlength="280" placeholder="Write your message..." class="w-full bg-transparent border-0 border-b border-zinc-400 px-0 py-3 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 resize-none transition"></textarea>
+      </div>
+
+      <div>
+        <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">From</label>
+        <input type="text" x-model="drawer.data.from" placeholder="Your name or company" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+      </div>
+
+    </div>
+    <div class="sticky bottom-0 bg-white border-t border-stone-200 px-8 py-4 flex items-center justify-between">
+      <button @click="closeDrawer()" class="text-sm text-stone-600 hover:text-black">Cancel</button>
+      <div class="flex items-center gap-2">
+        <button x-show="drawer.master" @click="saveMasterGreeting(true)" class="px-4 py-2 text-sm border border-red-300 text-red-700 rounded-md hover:bg-red-50">Overwrite all</button>
+        <button @click="saveGreeting()" class="px-6 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium" x-text="drawer.master ? 'Apply to all' : 'Save'"></button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ====================================================== -->
+<!-- ===== ITEM PERSONALIZATION DRAWER ==== -->
+<!-- ====================================================== -->
+<div x-show="drawer.open && drawer.type === 'item'" x-cloak class="fixed inset-0 z-40">
+  <div class="absolute inset-0 bg-black/30" @click="closeDrawer()"></div>
+  <aside class="absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl drawer-enter overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-stone-200 px-8 py-4 flex items-center justify-between z-10">
+      <div>
+        <h3 class="font-serif text-2xl" x-text="drawer.master ? 'Gift personalization · apply to all' : 'Gift personalization'"></h3>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="!drawer.master && currentRecipient()" x-text="'For ' + (currentRecipient() ? currentRecipient().name || 'this recipient' : '')"></p>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="drawer.master">Apply Item 1 and Item 2 to every recipient in this shipment.</p>
+      </div>
+      <button @click="closeDrawer()" class="p-1 text-stone-400 hover:text-black"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="px-8 py-8 space-y-7">
+
+      <!-- Item 1: image | title | slot inputs -->
+      <div class="grid grid-cols-[72px_1fr_212px] gap-5 items-center">
+        <div class="w-[72px] h-[72px] bg-stone-900 rounded flex items-center justify-center text-white font-serif italic text-sm">Pearl</div>
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Item 1</p>
+          <h5 class="font-serif text-lg mt-0.5 leading-tight">Onyx Candle</h5>
+          <p class="text-[11px] text-stone-400 mt-1 uppercase tracking-wider">Engraved on front lid</p>
+        </div>
+        <div>
+          <div class="flex gap-2.5">
+            <template x-for="i in 3" :key="'mi1-'+i">
+              <input
+                type="text"
+                maxlength="1"
+                :value="itemSlotValue('item1', i-1)"
+                @input="updateItemSlot('item1', i-1, $event.target.value, $event)"
+                @keydown="itemSlotKeydown('item1', i-1, $event)"
+                class="w-14 h-16 bg-transparent border-0 border-b border-zinc-400 text-center text-3xl font-serif uppercase text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 transition">
+            </template>
+          </div>
+          <p class="text-[10px] text-stone-400 mt-1.5 uppercase tracking-wider">3 chars · A–Z, 0–9</p>
+        </div>
+      </div>
+
+      <!-- Item 2: image | title | text input -->
+      <div class="grid grid-cols-[72px_1fr_212px] gap-5 items-center">
+        <div class="w-[72px] h-[72px] bg-stone-100 border border-stone-200 rounded flex items-center justify-center text-stone-700 font-serif text-[11px]">ONYX</div>
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Item 2</p>
+          <h5 class="font-serif text-lg mt-0.5 leading-tight">Coffee bag tag</h5>
+          <p class="text-[11px] text-stone-400 mt-1 uppercase tracking-wider">Printed tag on bag</p>
+        </div>
+        <div>
+          <div class="flex justify-end mb-0.5">
+            <span class="text-[10px] text-stone-400 uppercase tracking-wider"><span x-text="(drawer.data.item2 || '').length"></span> / 24</span>
+          </div>
+          <input type="text" x-model="drawer.data.item2" maxlength="24" placeholder="Name or phrase..." class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+        </div>
+      </div>
+
+    </div>
+    <div class="sticky bottom-0 bg-white border-t border-stone-200 px-8 py-4 flex items-center justify-between">
+      <button @click="closeDrawer()" class="text-sm text-stone-600 hover:text-black">Cancel</button>
+      <button @click="saveItem()" class="px-6 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium" x-text="drawer.master ? 'Apply to all' : 'Save'"></button>
+    </div>
+  </aside>
+</div>
+
+<!-- ====================================================== -->
+<!-- ===== RECIPIENT FULL DRAWER (row click) ==== -->
+<!-- ====================================================== -->
+<div x-show="drawer.open && drawer.type === 'recipient'" x-cloak class="fixed inset-0 z-40" x-data="{ recipientTab: 'items' }" x-effect="if (drawer.open && drawer.type === 'recipient') recipientTab = 'items'">
+  <div class="absolute inset-0 bg-black/30" @click="closeDrawer()"></div>
+  <aside class="absolute right-0 top-0 bottom-0 w-[640px] bg-white shadow-2xl drawer-enter overflow-y-auto flex flex-col">
+    <div class="sticky top-0 bg-white border-b border-stone-200 px-8 py-4 flex items-center justify-between z-10">
+      <div>
+        <h3 class="font-serif text-2xl">Personalization</h3>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="currentRecipient()" x-text="'For ' + (currentRecipient() ? currentRecipient().name || 'this recipient' : '')"></p>
+      </div>
+      <button @click="closeDrawer()" class="p-1 text-stone-400 hover:text-black"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+
+    <!-- TABS — distributed evenly across drawer width, filled state shown via green check-circle icon -->
+    <div class="sticky top-[73px] bg-white border-b border-stone-200 z-10 px-8 flex">
+      <button @click="recipientTab = 'items'"
+              :class="recipientTab === 'items' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'"
+              class="flex-1 px-4 py-3 text-sm font-medium border-b-2 -mb-px inline-flex items-center justify-center gap-2 transition">
+        <span>Gift items</span>
+        <svg x-show="currentRecipient() && (currentRecipient().item1 || currentRecipient().item2)" class="w-4 h-4 text-green-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/></svg>
+      </button>
+      <button @click="recipientTab = 'greeting'"
+              :class="recipientTab === 'greeting' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'"
+              class="flex-1 px-4 py-3 text-sm font-medium border-b-2 -mb-px inline-flex items-center justify-center gap-2 transition">
+        <span>Greeting card</span>
+        <svg x-show="currentRecipient() && currentRecipient().greeting && currentRecipient().greeting.message" class="w-4 h-4 text-green-600 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/></svg>
+      </button>
+      <button @click="recipientTab = 'video'"
+              :class="recipientTab === 'video' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-700'"
+              class="flex-1 px-4 py-3 text-sm font-medium border-b-2 -mb-px inline-flex items-center justify-center gap-2 transition">
+        <span>Video message</span>
+      </button>
+    </div>
+
+    <div class="px-8 py-8 flex-1">
+
+      <!-- ===== ITEMS PANEL ===== -->
+      <section x-show="recipientTab === 'items'">
+        <div class="space-y-7">
+
+          <!-- Item 1: image | title | slot inputs — all in one row -->
+          <div class="grid grid-cols-[72px_1fr_212px] gap-5 items-center">
+            <div class="w-[72px] h-[72px] bg-stone-900 rounded flex items-center justify-center text-white font-serif italic text-sm">Pearl</div>
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Item 1</p>
+              <h5 class="font-serif text-lg mt-0.5 leading-tight">Onyx Candle</h5>
+              <p class="text-[11px] text-stone-400 mt-1 uppercase tracking-wider">Engraved on front lid</p>
+            </div>
+            <div>
+              <div class="flex gap-2.5">
+                <template x-for="i in 3" :key="'i1-'+i">
+                  <input
+                    type="text"
+                    maxlength="1"
+                    :value="itemSlotValue('item1', i-1)"
+                    @input="updateItemSlot('item1', i-1, $event.target.value, $event)"
+                    @keydown="itemSlotKeydown('item1', i-1, $event)"
+                    class="w-14 h-16 bg-transparent border-0 border-b border-zinc-400 text-center text-3xl font-serif uppercase text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 transition">
+                </template>
+              </div>
+              <p class="text-[10px] text-stone-400 mt-1.5 uppercase tracking-wider">3 chars · A–Z, 0–9</p>
+            </div>
+          </div>
+
+          <!-- Item 2: image | title | input — all in one row -->
+          <div class="grid grid-cols-[72px_1fr_212px] gap-5 items-center">
+            <div class="w-[72px] h-[72px] bg-stone-100 border border-stone-200 rounded flex items-center justify-center text-stone-700 font-serif text-[11px]">ONYX</div>
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Item 2</p>
+              <h5 class="font-serif text-lg mt-0.5 leading-tight">Coffee bag tag</h5>
+              <p class="text-[11px] text-stone-400 mt-1 uppercase tracking-wider">Printed tag on bag</p>
+            </div>
+            <div>
+              <div class="flex justify-end mb-0.5">
+                <span class="text-[10px] text-stone-400 uppercase tracking-wider"><span x-text="(drawer.data.item2 || '').length"></span> / 24</span>
+              </div>
+              <input type="text" x-model="drawer.data.item2" maxlength="24" placeholder="Name or phrase..." class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ===== GREETING PANEL ===== -->
+      <section x-show="recipientTab === 'greeting'">
+        <div class="space-y-7">
+
+          <div>
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">To</label>
+            <input type="text" x-model="drawer.data.greeting.to" placeholder="Recipient name on the card" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-baseline mb-1">
+              <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Message</label>
+              <span class="text-[11px] text-stone-400"><span x-text="(drawer.data.greeting.message || '').length"></span> / 280</span>
+            </div>
+            <textarea x-model="drawer.data.greeting.message" rows="4" maxlength="280" placeholder="Write your message..." class="w-full bg-transparent border-0 border-b border-zinc-400 px-0 py-3 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 resize-none transition"></textarea>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500 block mb-1">From</label>
+            <input type="text" x-model="drawer.data.greeting.from" placeholder="Your name or company" class="w-full h-16 bg-transparent border-0 border-b border-zinc-400 px-0 text-base text-stone-900 focus:outline-none focus:border-zinc-700 focus:border-b-2 placeholder:text-zinc-300 transition">
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ===== VIDEO PANEL ===== -->
+      <section x-show="recipientTab === 'video'">
+        <p class="text-sm text-stone-600 mb-5">Record once, reuse for all recipients in this shipment, or upload individual.</p>
+        <button class="w-full flex items-center gap-4 px-4 py-4 border border-zinc-400 hover:border-zinc-700 transition text-left">
+          <svg class="w-5 h-5 text-stone-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+          <div>
+            <p class="text-sm text-stone-900">Click to upload or record</p>
+            <p class="text-[11px] text-stone-400 uppercase tracking-wider mt-0.5">MP4, MOV · up to 200MB</p>
+          </div>
+        </button>
+      </section>
+    </div>
+
+    <div class="sticky bottom-0 bg-white border-t border-stone-200 px-6 py-4 flex items-center justify-between">
+      <button @click="closeDrawer()" class="text-sm text-stone-600 hover:text-black">Cancel</button>
+      <button @click="saveRecipient()" class="px-6 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium">Save</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ====================================================== -->
+<!-- ===== ADDRESS DRAWER ==== -->
+<!-- ====================================================== -->
+<div x-show="drawer.open && drawer.type === 'address'" x-cloak class="fixed inset-0 z-40">
+  <div class="absolute inset-0 bg-black/30" @click="closeDrawer()"></div>
+  <aside class="absolute right-0 top-0 bottom-0 w-[520px] bg-white shadow-2xl drawer-enter overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-stone-200 px-6 py-4 flex items-center justify-between">
+      <div>
+        <h3 class="font-serif text-2xl" x-text="drawer.addressBookMode ? 'Add new address' : 'Shipping address'"></h3>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="drawer.addressBookMode">Saved to address book, then selected as Ship To</p>
+        <p class="text-xs text-stone-500 mt-0.5" x-show="!drawer.addressBookMode && currentRecipient()" x-text="'For ' + (currentRecipient() ? currentRecipient().name || 'this recipient' : '')"></p>
+      </div>
+      <button @click="closeDrawer()" class="p-1 text-stone-400 hover:text-black"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="p-6 space-y-5">
+
+      <!-- Details (name + company) -->
+      <div class="space-y-3 pb-5 border-b border-stone-200">
+        <p class="text-xs font-semibold uppercase tracking-wider text-stone-700">Details</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-stone-600 block mb-1.5">Full name <span class="text-red-500">*</span></label>
+            <input type="text" x-model="drawer.data.name" placeholder="Anton Parkhomenko" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-stone-600 block mb-1.5">Company <span class="text-stone-400 font-normal">(optional)</span></label>
+            <input type="text" x-model="drawer.data.company" placeholder="GildedBox" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-stone-600 block mb-1.5">Phone <span class="text-stone-400 font-normal">(for delivery)</span></label>
+          <input type="tel" x-model="drawer.data.phone" placeholder="+1 555 123 4567" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+        </div>
+      </div>
+
+      <!-- Address fields -->
+      <div class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-wider text-stone-700">Address</p>
+        <div>
+          <label class="text-xs font-medium text-stone-600 block mb-1.5">Street <span class="text-red-500">*</span></label>
+          <input type="text" x-model="drawer.data.street" placeholder="123 Main St" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-stone-600 block mb-1.5">Apt / Suite <span class="text-stone-400 font-normal">(optional)</span></label>
+          <input type="text" x-model="drawer.data.apt" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black">
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="text-xs font-medium text-stone-600 block mb-1.5">City <span class="text-red-500">*</span></label><input type="text" x-model="drawer.data.city" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"></div>
+          <div><label class="text-xs font-medium text-stone-600 block mb-1.5">State <span class="text-red-500">*</span></label><input type="text" x-model="drawer.data.state" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"></div>
+          <div><label class="text-xs font-medium text-stone-600 block mb-1.5">ZIP <span class="text-red-500">*</span></label><input type="text" x-model="drawer.data.zip" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black" :class="!drawer.data.zip ? '' : 'border-stone-200'"></div>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-stone-600 block mb-1.5">Country <span class="text-red-500">*</span></label>
+          <select x-model="drawer.data.country" class="w-full bg-white border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-black"><option>United States</option><option>Canada</option><option>Italy</option><option>United Kingdom</option><option>Germany</option><option>France</option></select>
+        </div>
+      </div>
+
+      <!-- Shipping method (only for per-recipient mode, NOT for address book mode) -->
+      <div x-show="!drawer.addressBookMode" class="pt-5 border-t border-stone-200 space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-wider text-stone-700">Shipping for this address</p>
+        <div class="space-y-2">
+          <template x-for="opt in shippingOptions" :key="'sh-'+opt.id">
+            <label class="flex items-center justify-between p-3 border border-stone-200 rounded-md cursor-pointer hover:border-stone-400 transition" :class="drawer.data.shipping === opt.id ? 'border-stone-900 bg-stone-50' : ''">
+              <span class="flex items-center gap-3">
+                <input type="radio" name="drawer-shipping" :value="opt.id" x-model="drawer.data.shipping" class="accent-black w-4 h-4">
+                <span>
+                  <span class="text-sm font-medium" x-text="opt.label"></span>
+                  <span class="block text-[11px] text-stone-500" x-text="opt.eta"></span>
+                </span>
+              </span>
+              <span class="text-sm font-medium">$<span x-text="opt.cost"></span></span>
+            </label>
+          </template>
+        </div>
+      </div>
+
+      <!-- Estimated shipping notice (only for address book mode — shipping picked at shipment level) -->
+      <div x-show="drawer.addressBookMode" class="bg-stone-50 rounded p-3 text-xs text-stone-600 flex items-center gap-2">
+        <svg class="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Shipping method will be selected at the shipment level after saving.</span>
+      </div>
+    </div>
+    <div class="sticky bottom-0 bg-white border-t border-stone-200 px-6 py-4 flex items-center justify-between">
+      <button @click="closeDrawer()" class="text-sm text-stone-600 hover:text-black">Cancel</button>
+      <button @click="saveAddress()" class="px-5 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium" x-text="drawer.addressBookMode ? 'Save & use for this shipment' : 'Save address & shipping'"></button>
+    </div>
+  </aside>
+</div>
+
+<!-- ====================================================== -->
+<!-- ===== CSV UPLOAD MODAL ==== -->
+<!-- ====================================================== -->
+<div x-show="csv.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-8">
+  <div class="absolute inset-0 bg-black/40" @click="csv.open = false"></div>
+  <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl modal-enter">
+    <div class="px-6 py-5 border-b border-stone-200 flex items-center justify-between">
+      <div>
+        <h3 class="font-serif text-2xl">Upload Recipients CSV</h3>
+        <div class="flex items-center gap-2 mt-2 text-xs">
+          <span :class="csv.step >= 1 ? 'text-black font-medium' : 'text-stone-400'">1. Select file</span>
+          <svg class="w-3 h-3 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+          <span :class="csv.step >= 2 ? 'text-black font-medium' : 'text-stone-400'">2. Preview & validate</span>
+          <svg class="w-3 h-3 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+          <span :class="csv.step >= 3 ? 'text-black font-medium' : 'text-stone-400'">3. Imported</span>
+        </div>
+      </div>
+      <button @click="csv.open = false" class="text-stone-400 hover:text-black"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+
+    <div x-show="csv.step === 1" class="p-8">
+      <button @click="simulateUpload()" class="w-full flex flex-col items-center gap-3 py-12 border-2 border-dashed border-stone-300 rounded-lg hover:border-black hover:bg-stone-50">
+        <svg class="w-12 h-12 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+        <p class="text-sm font-medium">Drop CSV here or click to select</p>
+        <p class="text-xs text-stone-500">For demo: clicking simulates an upload with sample data</p>
+      </button>
+      <div class="mt-4 flex items-center gap-2 text-xs text-stone-600">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Need a template? <button @click="downloadTemplate()" class="underline underline-offset-2">Download CSV template</button></span>
+      </div>
+    </div>
+
+    <div x-show="csv.step === 2" class="p-6">
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="bg-stone-50 rounded p-3 text-center"><p class="font-serif text-2xl" x-text="csv.preview.total"></p><p class="text-xs text-stone-500 uppercase">Total rows</p></div>
+        <div class="bg-green-50 rounded p-3 text-center"><p class="font-serif text-2xl text-green-700" x-text="csv.preview.valid"></p><p class="text-xs text-green-700 uppercase">Valid</p></div>
+        <div class="bg-red-50 rounded p-3 text-center"><p class="font-serif text-2xl text-red-700" x-text="csv.preview.errors"></p><p class="text-xs text-red-700 uppercase">With errors</p></div>
+      </div>
+      <div class="border border-stone-200 rounded overflow-hidden max-h-64 overflow-y-auto">
+        <table class="w-full text-xs">
+          <thead class="bg-stone-50 sticky top-0">
+            <tr><th class="p-2 text-left font-medium">Name</th><th class="p-2 text-left font-medium">Address</th><th class="p-2 text-left font-medium">ZIP</th><th class="p-2 text-left font-medium">Status</th></tr>
+          </thead>
+          <tbody>
+            <template x-for="(row, i) in csv.preview.rows" :key="i">
+              <tr :class="row.error ? 'bg-red-50' : ''" class="border-t border-stone-100">
+                <td class="p-2" x-text="row.name"></td>
+                <td class="p-2" x-text="row.address"></td>
+                <td class="p-2" :class="row.error ? 'text-red-700 font-medium' : ''" x-text="row.zip || '—'"></td>
+                <td class="p-2">
+                  <span x-show="!row.error" class="inline-flex items-center gap-1 text-green-700"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Valid</span>
+                  <span x-show="row.error" class="inline-flex items-center gap-1 text-red-700"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> <span x-text="row.error"></span></span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded p-3 mt-3 text-xs text-amber-900" x-show="csv.preview.errors > 0">
+        <strong>Heads up:</strong> rows with errors are imported and highlighted in the table so you can fix them inline.
+      </div>
+    </div>
+
+    <div x-show="csv.step === 3" class="p-8 text-center">
+      <svg class="w-16 h-16 text-green-600 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <h4 class="font-serif text-2xl mt-3">Imported</h4>
+      <p class="text-sm text-stone-600 mt-1"><span x-text="csv.preview.total"></span> recipients added to your shipment</p>
+    </div>
+
+    <div class="px-6 py-4 border-t border-stone-200 flex items-center justify-between">
+      <button @click="csv.open = false" class="text-sm text-stone-600 hover:text-black" x-text="csv.step === 3 ? 'Done' : 'Cancel'"></button>
+      <button x-show="csv.step === 2" @click="confirmCSVImport()" class="px-5 py-2 text-sm bg-black text-white rounded-md hover:bg-stone-800 font-medium">Import all <span x-text="csv.preview.total"></span> rows</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ALPINE STATE / METHODS ========== -->
+<script>
+function checkoutApp() {
+  return {
+    // ===== ADDRESS BOOK =====
+    addressBook: [
+      { id: 'a1', name: 'Anton Parkhomenko', label: '233 S Wacker Dr, Suite 8200, Chicago, IL 60606, US' },
+      { id: 'a2', name: 'Acme NYC Office',   label: '500 5th Ave, New York, NY 10110, US' },
+      { id: 'a3', name: 'Acme LA Studio',    label: '1234 Sunset Blvd, Los Angeles, CA 90028, US' },
+    ],
+
+    // ===== SCENARIO STATE =====
+    scenario: 'customizer',
+
+    setScenario(name) {
+      this.scenario = name;
+      this.bulkMenuOpen = null;
+      this.drawer = { open: false, type: null, productId: null, shipmentId: null, recipientId: null, master: false, data: {} };
+      this.csv = { open: false, step: 1, productId: null, shipmentId: null, preview: { total: 0, valid: 0, errors: 0, rows: [] } };
+
+      if (name === 'customizer')        this.products = [this.scenarioCustomizer()];
+      else if (name === 'portalEmpty')  this.products = [this.scenarioPortalEmpty()];
+      else if (name === 'portalLoaded') this.products = [this.scenarioPortalLoaded()];
+    },
+
+    // Scenario A: from 3D Customizer.
+    // One recipient — personalization filled, address + shipping empty.
+    scenarioCustomizer() {
+      return {
+        id: 1,
+        name: 'Coffee Lover Gift Set',
+        price: 95,
+        image: 'prototype-gift.png',
+        shipments: [{
+          id: 11,
+          addressMode: 'same',
+          detailsMode: 'now',
+          shipping: null,
+          deadline: '2025-08-15',
+          page: 1,
+          shipToId: null,
+          shipToLabel: '',
+          recipients: [
+            { id: 111, name: 'Alex Chen', qty: 1, item1: 'AC', item2: 'Alex',
+              greeting: { to: 'Alex', message: 'Congrats on the promotion. Onward and upward.', from: 'Anton', fromMaster: false, custom: true },
+              address: '', selected: false }
+          ]
+        }]
+      };
+    },
+
+    // Scenario B: empty checkout from portal. No recipients yet.
+    scenarioPortalEmpty() {
+      return {
+        id: 1,
+        name: 'Coffee Lover Gift Set',
+        price: 95,
+        image: 'prototype-gift.png',
+        shipments: [{
+          id: 11,
+          addressMode: 'same',
+          detailsMode: 'now',
+          shipping: 'ground',
+          deadline: '2025-08-15',
+          page: 1,
+          shipToId: null,
+          shipToLabel: '',
+          recipients: []
+        }]
+      };
+    },
+
+    // Scenario C: from portal with company list pre-loaded.
+    // Names + addresses + personalization filled, shipping per-recipient still empty.
+    scenarioPortalLoaded() {
+      return {
+        id: 1,
+        name: 'Coffee Lover Gift Set',
+        price: 95,
+        image: 'prototype-gift.png',
+        shipments: [{
+          id: 11,
+          addressMode: 'different',
+          detailsMode: 'now',
+          shipping: 'ground',
+          deadline: '2025-08-15',
+          page: 1,
+          shipToId: null,
+          shipToLabel: '',
+          recipients: [
+            { id: 211, name: 'Yuki Tanaka',    qty: 1, item1: 'YT', item2: 'Yuki',   greeting: { to: 'Yuki',   message: 'Thanks for hustle this quarter. You moved mountains.', from: 'Engineering', fromMaster: false, custom: true }, address: '5 Bay St, San Francisco, CA, 94103, US',  shipping: null, selected: false },
+            { id: 212, name: 'Léa Bernard',    qty: 1, item1: 'LB', item2: 'Léa',    greeting: { to: 'Léa',    message: 'Three years and counting. Thank you.',                from: 'CEO',         fromMaster: false, custom: true }, address: '9 River Ct, Denver, CO, 80202, US',      shipping: null, selected: false },
+            { id: 213, name: 'Henrik Larsson', qty: 1, item1: 'HL', item2: 'Henrik', greeting: { to: 'Henrik', message: 'For everything you do behind the scenes.',           from: 'Ops',         fromMaster: false, custom: true }, address: '64 Hill Rd, Boulder, CO, 80301, US',     shipping: null, selected: false },
+            { id: 214, name: 'Aisha Patel',    qty: 2, item1: 'AP', item2: 'Aisha',  greeting: { to: 'Aisha',  message: 'Welcome aboard. Glad you joined us.',                from: 'People Ops',  fromMaster: false, custom: true }, address: '12 Park Ave, NY, NY, 10016, US',         shipping: null, selected: false },
+            { id: 215, name: 'Theo Mendez',    qty: 1, item1: 'TM', item2: 'Theo',   greeting: { to: 'Theo',   message: 'Year one in the books. Onward!',                    from: 'The team',    fromMaster: false, custom: true }, address: '301 Mission St, SF, CA, 94105, US',      shipping: null, selected: false }
+          ]
+        }]
+      };
+    },
+
+    // ===== INIT =====
+    init() {
+      this.setScenario('customizer');
+    },
+
+    // ===== DATA MODEL (filled by setScenario in init) =====
+    products: [],
+
+    shippingOptions: [
+      { id: 'ground',    label: 'UPS Ground',    cost: 12, eta: '3–5 business days' },
+      { id: '2day',      label: 'UPS 2-Day',     cost: 24, eta: '2 business days' },
+      { id: 'overnight', label: 'UPS Overnight', cost: 48, eta: 'Next business day' }
+    ],
+
+    // ===== UI STATE =====
+    bulkMenuOpen: null,
+    drawer: { open: false, type: null, productId: null, shipmentId: null, recipientId: null, master: false, data: {} },
+    csv: { open: false, step: 1, productId: null, shipmentId: null, preview: { total: 0, valid: 0, errors: 0, rows: [] } },
+
+    // ===== HELPERS =====
+    findProduct(productId) { return this.products.find(p => p.id === productId); },
+    findShipment(productId, shipmentId) {
+      const p = this.findProduct(productId);
+      return p ? p.shipments.find(s => s.id === shipmentId) : null;
+    },
+    findRecipient(productId, shipmentId, recipientId) {
+      const s = this.findShipment(productId, shipmentId);
+      return s ? s.recipients.find(r => r.id === recipientId) : null;
+    },
+
+    // ===== COMPUTEDS =====
+    shipmentGifts(s) { return s.recipients.reduce((sum, r) => sum + (r.qty || 0), 0); },
+    shipmentTotal(p, s) { return this.shipmentGifts(s) * p.price; },
+    productGifts(p) { return p.shipments.reduce((sum, s) => sum + this.shipmentGifts(s), 0); },
+    productTotal(p) { return this.productGifts(p) * p.price; },
+
+    greetingPreview(g) {
+      if (!g || !g.message) return '';
+      const msg = g.message.length > 50 ? g.message.slice(0, 50) + '…' : g.message;
+      return '“' + msg + '”';
+    },
+    shipToName(shipment) {
+      if (!shipment || !shipment.shipToId) return '';
+      const addr = this.addressBook.find(a => a.id === shipment.shipToId);
+      return addr ? addr.name : '';
+    },
+    itemSlotValue(field, idx) {
+      return (this.drawer.data[field] || '').charAt(idx) || '';
+    },
+    updateItemSlot(field, idx, val, evt) {
+      const arr = ((this.drawer.data[field] || '') + '   ').split('').slice(0, 3);
+      arr[idx] = (val || '').toUpperCase();
+      const newVal = arr.join('').replace(/\s+$/g, '');
+      this.drawer.data[field] = newVal;
+      if (val && evt && evt.target.nextElementSibling && evt.target.nextElementSibling.tagName === 'INPUT') {
+        evt.target.nextElementSibling.focus();
+      }
+    },
+    itemSlotKeydown(field, idx, evt) {
+      if (evt.key === 'Backspace' && !evt.target.value && idx > 0 && evt.target.previousElementSibling && evt.target.previousElementSibling.tagName === 'INPUT') {
+        evt.target.previousElementSibling.focus();
+      }
+    },
+    greetingSubLabel(g) {
+      if (!g) return '';
+      if (g.fromMaster) return 'From master card';
+      if (g.custom) return 'Custom';
+      return g.from ? '— ' + g.from : '';
+    },
+
+    selectedCount(s) { return s.recipients.filter(r => r.selected).length; },
+    allSelected(s) { return s.recipients.length > 0 && s.recipients.every(r => r.selected); },
+
+    // Reason why bulk-apply actions are disabled in current flow context. Empty = enabled.
+    // Strict select-first: nothing happens unless user explicitly picks rows (or uses master checkbox).
+    applyDisabledReason(s) {
+      if (!s) return '';
+      if (s.recipients.length === 0) return 'Add recipients first.';
+      if (s.detailsMode === 'later')  return 'Personalization is deferred for this shipment.';
+      if (this.selectedCount(s) === 0) return 'Select rows to apply (or use the master checkbox in the table header).';
+      return '';
+    },
+
+    // Dynamic headline for Different-per-recipient mode.
+    // Mirrors the Same-mode pattern: small label + one informative serif line.
+    differentSummary(shipment) {
+      if (!shipment) return '';
+      const recipients = shipment.recipients || [];
+      if (recipients.length === 0) return 'No recipients yet';
+      const withAddress = recipients.filter(r => r.address);
+      const cities = new Set();
+      withAddress.forEach(r => {
+        const parsed = this.parseAddress(r.address);
+        if (parsed.city) cities.add(parsed.city);
+      });
+      const n = recipients.length;
+      const c = cities.size;
+      const recipWord = n === 1 ? 'recipient' : 'recipients';
+      if (c === 0) return `${n} ${recipWord} · addresses pending`;
+      const cityWord = c === 1 ? 'city' : 'cities';
+      return `Going to ${n} ${recipWord} across ${c} ${cityWord}`;
+    },
+
+    shippingCost(shippingId) {
+      const opt = this.shippingOptions.find(o => o.id === shippingId);
+      return opt ? opt.cost : 0;
+    },
+    shippingLabel(shippingId) {
+      const opt = this.shippingOptions.find(o => o.id === shippingId);
+      return opt ? opt.label : '';
+    },
+    estimatedShipping(s) {
+      if (s.addressMode === 'same') {
+        return this.shippingCost(s.shipping);
+      }
+      // Different per recipient: sum of per-recipient shipping costs
+      return s.recipients.reduce((sum, r) => sum + this.shippingCost(r.shipping || 'ground'), 0);
+    },
+
+    paginatedRecipients(s) {
+      const start = (s.page - 1) * 10;
+      return s.recipients.slice(start, start + 10);
+    },
+    totalPages(s) { return Math.max(1, Math.ceil(s.recipients.length / 10)); },
+    pageNumbers(s) {
+      const total = this.totalPages(s);
+      const current = s.page;
+      const pages = [];
+      const start = Math.max(1, current - 2);
+      const end = Math.min(total, start + 4);
+      for (let i = start; i <= end; i++) pages.push(i);
+      return pages;
+    },
+
+    orderSubtotal() { return this.products.reduce((sum, p) => sum + this.productTotal(p), 0); },
+    totalShipments() { return this.products.reduce((sum, p) => sum + p.shipments.length, 0); },
+    orderShipping() {
+      return this.products.reduce((sum, p) =>
+        sum + p.shipments.reduce((s, sh) => s + this.estimatedShipping(sh), 0), 0);
+    },
+    anyDefer() {
+      return this.products.some(p => p.shipments.some(s => s.detailsMode === 'later'));
+    },
+
+    currentProduct()   { return this.findProduct(this.drawer.productId); },
+    currentShipment()  { return this.findShipment(this.drawer.productId, this.drawer.shipmentId); },
+    currentRecipient() { return this.findRecipient(this.drawer.productId, this.drawer.shipmentId, this.drawer.recipientId); },
+
+    // ===== ACTIONS: RECIPIENTS =====
+    toggleAllSelected(s, checked) { s.recipients.forEach(r => r.selected = checked); },
+    addRecipient(productId, shipmentId) {
+      const s = this.findShipment(productId, shipmentId);
+      s.recipients.push({ id: Date.now(), name: '', qty: 1, item1: '', item2: '', greeting: null, address: '', selected: false });
+      s.page = this.totalPages(s);
+    },
+    removeRecipient(productId, shipmentId, recipientId) {
+      const s = this.findShipment(productId, shipmentId);
+      s.recipients = s.recipients.filter(r => r.id !== recipientId);
+      if (s.page > this.totalPages(s)) s.page = this.totalPages(s);
+    },
+
+    // ===== ACTIONS: SHIPMENTS (inside a product) =====
+    addShipment(productId) {
+      const p = this.findProduct(productId);
+      const newId = Date.now();
+      const firstAddr = this.addressBook[0];
+      p.shipments.push({
+        id: newId,
+        addressMode: 'same',
+        detailsMode: 'now',
+        shipping: 'ground',
+        deadline: '2025-08-15',
+        page: 1,
+        shipToId: firstAddr ? firstAddr.id : null,
+        shipToLabel: firstAddr ? firstAddr.label : '',
+        recipients: [
+          { id: newId + 1, name: '', qty: 1, item1: '', item2: '', greeting: null, address: '', selected: false }
+        ]
+      });
+    },
+    removeShipment(productId, shipmentId) {
+      const p = this.findProduct(productId);
+      if (p.shipments.length <= 1) {
+        alert('At least one shipment is required. Remove the product instead if you don\'t need this gift.');
+        return;
+      }
+      p.shipments = p.shipments.filter(s => s.id !== shipmentId);
+    },
+
+    // ===== ACTIONS: PRODUCTS =====
+    addProduct() {
+      const newId = Date.now();
+      this.products.push({
+        id: newId,
+        name: 'New Gift Set',
+        price: 95,
+        image: 'prototype-gift.png',
+        shipments: [{
+          id: newId + 100,
+          addressMode: 'same',
+          detailsMode: 'now',
+          shipping: 'ground',
+          deadline: '2025-08-15',
+          page: 1,
+          recipients: [
+            { id: newId + 101, name: '', qty: 1, item1: '', item2: '', greeting: null, address: '', selected: false }
+          ]
+        }]
+      });
+    },
+    removeProduct(idx) {
+      if (this.products.length <= 1) return;
+      if (!confirm('Remove this product and all its shipments?')) return;
+      this.products.splice(idx, 1);
+    },
+
+    // ===== DRAWERS =====
+    openGreetingDrawer(productId, shipmentId, recipientId) {
+      const r = this.findRecipient(productId, shipmentId, recipientId);
+      this.drawer = {
+        open: true, type: 'greeting', productId, shipmentId, recipientId, master: false,
+        data: { ...(r.greeting || { to: '', message: '', from: '' }) }
+      };
+    },
+    openItemDrawer(productId, shipmentId, recipientId) {
+      const r = this.findRecipient(productId, shipmentId, recipientId);
+      this.drawer = {
+        open: true, type: 'item', productId, shipmentId, recipientId, master: false,
+        data: { item1: r.item1 || '', item2: r.item2 || '' }
+      };
+    },
+    parseAddress(label) {
+      const empty = { street: '', apt: '', city: '', state: '', zip: '', country: 'United States' };
+      if (!label) return empty;
+      const parts = label.split(',').map(s => s.trim()).filter(Boolean);
+      const normalizeCountry = c => (c === 'US' || c === 'USA') ? 'United States' : c;
+      // "street, city, state zip, country"
+      if (parts.length === 4) {
+        const sz = parts[2].split(/\s+/);
+        return { street: parts[0], apt: '', city: parts[1], state: sz[0] || '', zip: sz.slice(1).join(' ') || '', country: normalizeCountry(parts[3]) };
+      }
+      // "street, city, state, zip, country"
+      if (parts.length === 5) {
+        return { street: parts[0], apt: '', city: parts[1], state: parts[2], zip: parts[3], country: normalizeCountry(parts[4]) };
+      }
+      // "street, apt, city, state, zip, country"
+      if (parts.length === 6) {
+        return { street: parts[0], apt: parts[1], city: parts[2], state: parts[3], zip: parts[4], country: normalizeCountry(parts[5]) };
+      }
+      return { ...empty, street: label };
+    },
+    openAddressDrawer(productId, shipmentId, recipientId) {
+      const r = this.findRecipient(productId, shipmentId, recipientId);
+      const parsed = this.parseAddress(r && r.address);
+      // Shipping: keep null intent for pre-loaded recipients; default 'ground' only for fresh ones.
+      let shipping;
+      if (r && r.shipping) shipping = r.shipping;
+      else if (r && r.shipping === null) shipping = null;
+      else shipping = 'ground';
+      this.drawer = {
+        open: true, type: 'address', productId, shipmentId, recipientId, master: false, addressBookMode: false,
+        data: { name: (r && r.name) || '', company: '', phone: '', ...parsed, shipping }
+      };
+    },
+    openAddressBookDrawer(productId, shipmentId) {
+      this.drawer = {
+        open: true, type: 'address', productId, shipmentId, recipientId: null, master: false, addressBookMode: true,
+        data: { name: '', company: '', phone: '', street: '', apt: '', city: '', state: '', zip: '', country: 'United States', shipping: 'ground' }
+      };
+    },
+    openMasterDrawer(productId, shipmentId, type) {
+      this.bulkMenuOpen = null;
+      this.drawer = {
+        open: true, type, productId, shipmentId, recipientId: null, master: true,
+        data: type === 'greeting' ? { to: '', message: '', from: '' } : { item1: '', item2: '' }
+      };
+    },
+    openRecipientDrawer(productId, shipmentId, recipientId) {
+      const r = this.findRecipient(productId, shipmentId, recipientId);
+      if (!r) return;
+      this.drawer = {
+        open: true, type: 'recipient', productId, shipmentId, recipientId, master: false,
+        data: {
+          item1: r.item1 || '',
+          item2: r.item2 || '',
+          greeting: { ...(r.greeting || { to: '', message: '', from: '' }) }
+        }
+      };
+    },
+    saveRecipient() {
+      const r = this.currentRecipient();
+      if (!r) return;
+      r.item1 = this.drawer.data.item1;
+      r.item2 = this.drawer.data.item2;
+      const g = this.drawer.data.greeting;
+      if (g.message || g.to || g.from) {
+        r.greeting = { ...g, fromMaster: false, custom: true };
+      } else {
+        r.greeting = null;
+      }
+      this.closeDrawer();
+    },
+    closeDrawer() { this.drawer.open = false; },
+
+    saveGreeting() {
+      const s = this.currentShipment();
+      if (this.drawer.master) {
+        s.recipients.forEach(r => {
+          if (!r.greeting || !r.greeting.custom) {
+            r.greeting = { ...this.drawer.data, fromMaster: true, custom: false };
+          }
+        });
+      } else {
+        const r = this.currentRecipient();
+        r.greeting = { ...this.drawer.data, fromMaster: false, custom: true };
+      }
+      this.closeDrawer();
+    },
+    saveMasterGreeting(overwrite) {
+      const s = this.currentShipment();
+      s.recipients.forEach(r => {
+        if (overwrite || !r.greeting || !r.greeting.custom) {
+          r.greeting = { ...this.drawer.data, fromMaster: true, custom: false };
+        }
+      });
+      this.closeDrawer();
+    },
+    saveItem() {
+      const s = this.currentShipment();
+      if (this.drawer.master) {
+        s.recipients.forEach(r => {
+          r.item1 = this.drawer.data.item1;
+          r.item2 = this.drawer.data.item2;
+        });
+      } else {
+        const r = this.currentRecipient();
+        r.item1 = this.drawer.data.item1;
+        r.item2 = this.drawer.data.item2;
+      }
+      this.closeDrawer();
+    },
+    saveAddress() {
+      const d = this.drawer.data;
+      const label = `${d.street}${d.apt ? ', ' + d.apt : ''}, ${d.city}, ${d.state} ${d.zip}, ${d.country}`;
+      const hasAddress = !!(d.street || d.city || d.zip);
+
+      if (this.drawer.addressBookMode) {
+        if (!hasAddress) { this.closeDrawer(); return; }
+        const newId = 'a' + Date.now();
+        this.addressBook.push({ id: newId, name: d.name || 'Unnamed', label });
+        const s = this.currentShipment();
+        if (s) { s.shipToId = newId; s.shipToLabel = label; }
+      } else {
+        const r = this.currentRecipient();
+        if (r) {
+          if (hasAddress) {
+            r.address = label;
+            if (d.name) r.name = d.name;
+            r.hasError = !d.zip;
+            r.errorMsg = !d.zip ? 'ZIP code required' : '';
+          }
+          // Shipping is independent: user may open drawer just to pick shipping.
+          r.shipping = d.shipping;
+        }
+      }
+      this.closeDrawer();
+    },
+
+    // ===== BULK =====
+    bulkApply(productId, shipmentId, kind) {
+      this.bulkMenuOpen = null;
+      if (kind === 'greeting') this.openMasterDrawer(productId, shipmentId, 'greeting');
+      else if (kind === 'item') this.openMasterDrawer(productId, shipmentId, 'item');
+      else if (kind === 'video') alert('Video bulk attach: opens video picker (out of scope for static prototype)');
+    },
+    bulkClear(productId, shipmentId) {
+      const s = this.findShipment(productId, shipmentId);
+      const selected = s.recipients.filter(r => r.selected);
+      const targetAll = selected.length === 0;
+      s.recipients.forEach(r => {
+        if (targetAll || r.selected) {
+          r.item1 = '';
+          r.item2 = '';
+          r.greeting = null;
+        }
+      });
+      this.bulkMenuOpen = null;
+    },
+    bulkDelete(productId, shipmentId) {
+      const s = this.findShipment(productId, shipmentId);
+      const selected = s.recipients.filter(r => r.selected);
+      if (selected.length === 0) return;
+      if (!confirm(`Remove ${selected.length} recipient(s)?`)) return;
+      s.recipients = s.recipients.filter(r => !r.selected);
+      this.bulkMenuOpen = null;
+    },
+
+    // ===== CSV =====
+    downloadTemplate() {
+      this.bulkMenuOpen = null;
+      const csv = 'Recipient Full Name,QTY,Address Line 1,City,State,ZIP,Country,Item 1 Initials,Item 2 Name,Greeting To,Greeting Message,Greeting From\nJane Doe,1,123 Main St,New York,NY,10001,US,JD,Jane,Jane,"Happy birthday!","From Acme"\n';
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'gildedbox-recipients-template.csv';
+      a.click();
+    },
+    openCSVModal(productId, shipmentId) {
+      this.bulkMenuOpen = null;
+      this.csv = { open: true, step: 1, productId, shipmentId, preview: { total: 0, valid: 0, errors: 0, rows: [] } };
+    },
+    simulateUpload() {
+      const sample = [
+        { name: 'Emma Schultz',    address: '15 Oak Ave, Boston, MA',         zip: '02115' },
+        { name: 'Marcus Lee',      address: '42 Pine St, Seattle, WA',        zip: '98101' },
+        { name: 'Sofia Romano',    address: '88 Elm Rd, Brooklyn, NY',        zip: '',     error: 'ZIP required' },
+        { name: 'Aiden Carter',    address: '101 Cedar Ln, Austin, TX',       zip: '78701' },
+        { name: 'Yuki Tanaka',     address: '5 Bay St, San Francisco, CA',    zip: '94103' },
+        { name: 'Olivia Black',    address: '77 Spruce Dr, Portland, OR',     zip: '97201' },
+        { name: 'Daniel Park',     address: '23 Maple St, Chicago, IL',       zip: '',     error: 'ZIP required' },
+        { name: 'Léa Bernard',     address: '9 River Ct, Denver, CO',         zip: '80202' },
+        { name: 'Henrik Larsson',  address: '64 Hill Rd, Boulder, CO',        zip: '80301' },
+        { name: 'Aisha Patel',     address: '12 Park Ave, NY, NY',            zip: '10016' },
+        { name: 'Theo Mendez',     address: '301 Mission St, SF, CA',         zip: '94105' },
+        { name: 'Nora Holm',       address: '18 Lakeshore, Minneapolis, MN',  zip: '55401' },
+        { name: 'Idris Bello',     address: '4 Beach Pl, Miami, FL',          zip: '33139' },
+        { name: 'Frida Lindqvist', address: '99 Birch St, Madison, WI',       zip: '53703' },
+        { name: 'Omar Khalil',     address: '7 Granite Way, Phoenix, AZ',     zip: '',     error: 'ZIP required' },
+        { name: 'Camille Doré',    address: '50 Forest Dr, Atlanta, GA',      zip: '30303' },
+        { name: 'Jonas Weber',     address: '21 Liberty St, Philadelphia',    zip: '19106' },
+        { name: 'Ruby Hall',       address: '6 Sunset Blvd, LA, CA',          zip: '90028' },
+        { name: 'Ezra Levin',      address: '85 Cherry St, Nashville, TN',    zip: '37203' },
+        { name: 'Mira Khan',       address: '17 Holly Ln, Charlotte, NC',     zip: '28202' },
+      ];
+      const errors = sample.filter(r => r.error).length;
+      this.csv.preview = { total: sample.length, valid: sample.length - errors, errors, rows: sample };
+      this.csv.step = 2;
+    },
+    confirmCSVImport() {
+      const s = this.findShipment(this.csv.productId, this.csv.shipmentId);
+      this.csv.preview.rows.forEach((row, i) => {
+        s.recipients.push({
+          id: Date.now() + i,
+          name: row.name,
+          qty: 1,
+          item1: '',
+          item2: '',
+          greeting: null,
+          address: row.address,
+          selected: false,
+          hasError: !!row.error,
+          errorMsg: row.error || ''
+        });
+      });
+      if (s.addressMode === 'same') s.addressMode = 'different';
+      this.csv.step = 3;
+    },
+
+    resetDemo() { location.reload(); }
+  };
+}
+</script>
+
+</body>
+</html>

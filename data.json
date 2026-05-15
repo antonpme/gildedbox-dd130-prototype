@@ -1,0 +1,61 @@
+{
+  "addressBook": [
+    { "id": "a1", "name": "Anton Parkhomenko",   "label": "233 S Wacker Dr, Suite 8200, Chicago, IL 60606, US" },
+    { "id": "a2", "name": "Acme NYC Office",     "label": "500 5th Ave, New York, NY 10110, US" },
+    { "id": "a3", "name": "Acme LA Studio",      "label": "1234 Sunset Blvd, Los Angeles, CA 90028, US" }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "name": "Coffee Lover Gift Set",
+      "price": 95,
+      "image": "prototype-gift.png",
+      "shipments": [
+        {
+          "id": 11,
+          "addressMode": "same",
+          "detailsMode": "now",
+          "shipping": "ground",
+          "deadline": "2025-08-15",
+          "page": 1,
+          "shipToId": "a1",
+          "shipToLabel": "233 S Wacker Dr, Suite 8200, Chicago, IL 60606, US",
+          "recipients": [
+            { "id": 111, "name": "Anton Parkhomenko",  "qty": 1,  "item1": "AP", "item2": "Anton",    "greeting": { "to": "Anton",  "message": "Welcome aboard, partner. Looking forward to building together.", "from": "The team", "fromMaster": false, "custom": false }, "address": "233 S Wacker Dr, Suite 8200, Chicago, IL 60606, US", "selected": false },
+            { "id": 112, "name": "Sam Brown",          "qty": 5,  "item1": "SB", "item2": "Sam",      "greeting": null, "address": "", "selected": false },
+            { "id": 113, "name": "Priya Sharma",       "qty": 10, "item1": "PS", "item2": "Priya",    "greeting": { "to": "Priya",  "message": "For 10 years of carrying us through every quarter close. Thank you.", "from": "CFO office", "fromMaster": false, "custom": true }, "address": "", "selected": false },
+            { "id": 114, "name": "Kenji Tanaka",       "qty": 1,  "item1": "",   "item2": "",         "greeting": null, "address": "", "selected": false },
+            { "id": 115, "name": "Ingrid Dubois",      "qty": 1,  "item1": "ID", "item2": "Ingrid",   "greeting": null, "address": "", "selected": false },
+            { "id": 116, "name": "Wei Zhao",           "qty": 1,  "item1": "",   "item2": "",         "greeting": null, "address": "", "selected": false },
+            { "id": 117, "name": "Isabelle Bjørnvik",  "qty": 1,  "item1": "IB", "item2": "Isabelle", "greeting": null, "address": "", "selected": false },
+            { "id": 118, "name": "Ailbe MacLeod",      "qty": 1,  "item1": "",   "item2": "",         "greeting": null, "address": "", "selected": false },
+            { "id": 119, "name": "Ricardo Guedes",     "qty": 1,  "item1": "RG", "item2": "Ricardo",  "greeting": null, "address": "", "selected": false },
+            { "id": 120, "name": "Naomi Wilderman",    "qty": 1,  "item1": "",   "item2": "",         "greeting": null, "address": "", "selected": false },
+            { "id": 121, "name": "Mateo Álvarez",      "qty": 2,  "item1": "MA", "item2": "Mateo",    "greeting": null, "address": "", "selected": false },
+            { "id": 122, "name": "Hannah Liu",         "qty": 1,  "item1": "",   "item2": "",         "greeting": null, "address": "", "selected": false },
+            { "id": 123, "name": "Olufunke Adebayo",   "qty": 1,  "item1": "OA", "item2": "Olufunke", "greeting": { "to": "Olufunke", "message": "Welcome to the team. We're glad you're here.", "from": "People Ops", "fromMaster": true, "custom": false }, "address": "", "selected": false },
+            { "id": 124, "name": "Lukas Schreiber",    "qty": 1,  "item1": "",   "item2": "",         "greeting": null, "address": "", "selected": false },
+            { "id": 125, "name": "Aiyana Redfeather",  "qty": 1,  "item1": "AR", "item2": "Aiyana",   "greeting": null, "address": "", "selected": false }
+          ]
+        },
+        {
+          "id": 12,
+          "addressMode": "different",
+          "detailsMode": "now",
+          "shipping": "2day",
+          "deadline": "2025-08-22",
+          "page": 1,
+          "shipToId": null,
+          "shipToLabel": "",
+          "recipients": [
+            { "id": 211, "name": "Yuki Tanaka",     "qty": 1, "item1": "YT", "item2": "Yuki",     "greeting": null, "address": "5 Bay St, San Francisco, CA, 94103, US", "selected": false },
+            { "id": 212, "name": "Léa Bernard",     "qty": 1, "item1": "LB", "item2": "Léa",      "greeting": null, "address": "9 River Ct, Denver, CO, 80202, US", "selected": false },
+            { "id": 213, "name": "Henrik Larsson",  "qty": 1, "item1": "",   "item2": "",         "greeting": null, "address": "64 Hill Rd, Boulder, CO, 80301, US", "selected": false },
+            { "id": 214, "name": "Aisha Patel",     "qty": 2, "item1": "AP", "item2": "Aisha",    "greeting": { "to": "Aisha", "message": "Three years and counting. Thank you for everything.", "from": "Engineering", "fromMaster": false, "custom": true }, "address": "12 Park Ave, NY, NY, 10016, US", "selected": false },
+            { "id": 215, "name": "Theo Mendez",     "qty": 1, "item1": "",   "item2": "",         "greeting": null, "address": "301 Mission St, SF, CA, 94105, US", "selected": false }
+          ]
+        }
+      ]
+    }
+  ]
+}
