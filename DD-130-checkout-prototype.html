@@ -954,7 +954,9 @@ function checkoutApp() {
     },
 
     // Scenario A: from 3D Customizer.
-    // One recipient — personalization filled, address + shipping empty.
+    // The customizer doesn't ask for recipient's full name — only personalization
+    // (initials, tag name, greeting) is optionally collected. Full name + address + shipping
+    // are entered later on the checkout page.
     scenarioCustomizer() {
       return {
         id: 1,
@@ -971,7 +973,7 @@ function checkoutApp() {
           shipToId: null,
           shipToLabel: '',
           recipients: [
-            { id: 111, name: 'Alex Chen', qty: 1, item1: 'AC', item2: 'Alex',
+            { id: 111, name: '', qty: 1, item1: 'AC', item2: 'Alex',
               greeting: { to: 'Alex', message: 'Congrats on the promotion. Onward and upward.', from: 'Anton', fromMaster: false, custom: true },
               address: '', selected: false }
           ]
