@@ -211,8 +211,8 @@
                 </div>
               </div>
 
-              <!-- Personalization header + bulk -->
-              <div class="flex items-center justify-between pt-2">
+              <!-- Personalization header + bulk (hidden in "I'll do it later" mode — see deferred block below) -->
+              <div class="flex items-center justify-between pt-2" x-show="shipment.detailsMode === 'now'">
                 <div>
                   <h3 class="font-serif text-2xl">Personalization</h3>
                   <p class="text-stone-500 text-xs mt-1" x-show="selectedCount(shipment) === 0">Click any cell to add details, or use Bulk Actions to handle many at once.</p>
@@ -285,7 +285,8 @@
               </div>
 
               <!-- Table — flat, no outer border, no row backgrounds. table-fixed so Item 1/2/Greeting share remaining space proportionally -->
-              <div>
+              <!-- Hidden in "I'll do it later" mode — replaced by the deferred-details block below -->
+              <div x-show="shipment.detailsMode === 'now'">
                 <table class="w-full table-fixed">
                   <thead class="border-b border-stone-200">
                     <tr class="text-xs uppercase tracking-wider text-stone-500">
@@ -437,6 +438,39 @@
                       · $<span class="font-medium text-stone-900" x-text="shipmentTotal(product, shipment).toLocaleString()"></span>
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <!-- Deferred-details block — shown in "I'll do it later" mode in place of Personalization (Julia: hide all Personalization section) -->
+              <div x-show="shipment.detailsMode === 'later'" class="space-y-6 pt-2">
+                <div>
+                  <h3 class="font-serif text-2xl">Order quantity</h3>
+                  <p class="text-stone-500 text-xs mt-1">Pay for the gift sets now. Recipients fill in personalization through the magic link before the deadline.</p>
+                </div>
+
+                <div class="flex items-center gap-6">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Number of gifts</span>
+                  <div class="inline-flex items-center bg-white border border-stone-300 rounded overflow-hidden">
+                    <button @click="shipment.deferQty > 1 && shipment.deferQty--" class="px-3 py-2 text-stone-500 hover:bg-stone-100 hover:text-black">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>
+                    </button>
+                    <input type="number" x-model.number="shipment.deferQty" min="1" class="w-16 text-center text-base font-medium bg-transparent border-x border-stone-200 py-2 focus:outline-none focus:bg-stone-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]">
+                    <button @click="shipment.deferQty++" class="px-3 py-2 text-stone-500 hover:bg-stone-100 hover:text-black">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    </button>
+                  </div>
+                  <span class="text-xs text-stone-500">
+                    <span class="font-medium text-stone-900" x-text="shipmentGifts(shipment)"></span> gift<span x-show="shipmentGifts(shipment) !== 1">s</span>
+                    · $<span class="font-medium text-stone-900" x-text="shipmentTotal(product, shipment).toLocaleString()"></span>
+                  </span>
+                </div>
+
+                <div class="border-t border-stone-200 pt-5">
+                  <button @click="downloadTemplate()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border border-stone-300 rounded-md hover:bg-stone-50 bg-white">
+                    <svg class="w-4 h-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    Download CSV template
+                  </button>
+                  <p class="text-xs text-stone-400 mt-2 leading-snug">Optional. Pre-fill recipient details offline, then upload via the magic link.</p>
                 </div>
               </div>
 
@@ -962,6 +996,7 @@ function checkoutApp() {
           page: 1,
           shipToId: null,
           shipToLabel: '',
+          deferQty: 1,
           recipients: [
             { id: 111, name: '', qty: 1, item1: 'AC', item2: 'Alex',
               greeting: { to: 'Alex', message: 'Congrats on the promotion. Onward and upward.', from: 'Anton', fromMaster: false, custom: true },
@@ -987,6 +1022,7 @@ function checkoutApp() {
           page: 1,
           shipToId: null,
           shipToLabel: '',
+          deferQty: 1,
           recipients: []
         }]
       };
@@ -1009,6 +1045,7 @@ function checkoutApp() {
           page: 1,
           shipToId: null,
           shipToLabel: '',
+          deferQty: 1,
           recipients: [
             { id: 211, name: 'Yuki Tanaka',    qty: 1, item1: 'YT', item2: 'Yuki',   greeting: { to: 'Yuki',   message: 'Thanks for hustle this quarter. You moved mountains.', from: 'Engineering', fromMaster: false, custom: true }, address: '5 Bay St, San Francisco, CA, 94103, US',  shipping: 'ground', selected: false },
             { id: 212, name: 'Léa Bernard',    qty: 1, item1: 'LB', item2: 'Léa',    greeting: { to: 'Léa',    message: 'Three years and counting. Thank you.',                from: 'CEO',         fromMaster: false, custom: true }, address: '9 River Ct, Denver, CO, 80202, US',      shipping: 'ground', selected: false },
@@ -1051,7 +1088,12 @@ function checkoutApp() {
     },
 
     // ===== COMPUTEDS =====
-    shipmentGifts(s) { return s.recipients.reduce((sum, r) => sum + (r.qty || 0), 0); },
+    // In "I'll do it later" mode, gift count comes from shipment.deferQty (set via
+    // the prominent qty selector). In "now" mode, sum recipients[].qty as before.
+    shipmentGifts(s) {
+      if (s.detailsMode === 'later') return s.deferQty || 0;
+      return s.recipients.reduce((sum, r) => sum + (r.qty || 0), 0);
+    },
     shipmentTotal(p, s) { return this.shipmentGifts(s) * p.price; },
     productGifts(p) { return p.shipments.reduce((sum, s) => sum + this.shipmentGifts(s), 0); },
     productTotal(p) { return this.productGifts(p) * p.price; },
@@ -1195,6 +1237,7 @@ function checkoutApp() {
         page: 1,
         shipToId: firstAddr ? firstAddr.id : null,
         shipToLabel: firstAddr ? firstAddr.label : '',
+        deferQty: 1,
         recipients: [
           { id: newId + 1, name: '', qty: 1, item1: '', item2: '', greeting: null, address: '', selected: false }
         ]
@@ -1224,6 +1267,7 @@ function checkoutApp() {
           shipping: 'ground',
           deadline: '2025-08-15',
           page: 1,
+          deferQty: 1,
           recipients: [
             { id: newId + 101, name: '', qty: 1, item1: '', item2: '', greeting: null, address: '', selected: false }
           ]
