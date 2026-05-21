@@ -174,7 +174,7 @@
                   <template x-for="opt in shippingOptions" :key="'ship-'+opt.id">
                     <label
                       :class="shipment.shipping === opt.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200 bg-white hover:border-stone-400'"
-                      class="cursor-pointer border rounded-md p-3 flex items-center justify-between transition">
+                      class="cursor-pointer border rounded-md p-3 flex items-center transition">
                       <span class="flex items-center gap-2.5 min-w-0">
                         <input type="radio" :name="'ship-' + shipment.id" :value="opt.id" x-model="shipment.shipping" class="accent-black w-4 h-4 flex-shrink-0">
                         <span class="min-w-0">
@@ -182,7 +182,6 @@
                           <span class="text-[11px] text-stone-500 block truncate" x-text="opt.eta"></span>
                         </span>
                       </span>
-                      <span class="text-sm font-medium flex-shrink-0 ml-2">$<span x-text="opt.cost"></span></span>
                     </label>
                   </template>
                 </div>
@@ -816,7 +815,7 @@
         <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-500">Shipping for this address</p>
         <div class="space-y-2">
           <template x-for="opt in shippingOptions" :key="'sh-'+opt.id">
-            <label class="flex items-center justify-between p-3 border rounded-md cursor-pointer transition" :class="drawer.data.shipping === opt.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200 hover:border-stone-400'">
+            <label class="flex items-center p-3 border rounded-md cursor-pointer transition" :class="drawer.data.shipping === opt.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200 hover:border-stone-400'">
               <span class="flex items-center gap-3">
                 <input type="radio" name="drawer-shipping" :value="opt.id" x-model="drawer.data.shipping" class="accent-black w-4 h-4">
                 <span>
@@ -824,7 +823,6 @@
                   <span class="block text-[11px] text-stone-500" x-text="opt.eta"></span>
                 </span>
               </span>
-              <span class="text-sm font-medium">$<span x-text="opt.cost"></span></span>
             </label>
           </template>
         </div>
