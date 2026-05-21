@@ -70,112 +70,6 @@
 <!-- ========== MAIN CONTAINER ========== -->
 <main class="max-w-[1600px] 2xl:max-w-[1920px] mx-auto px-12 pb-24 space-y-6">
 
-  <!-- ============================================================ -->
-  <!-- TEMPORARY: Details-chooser variants preview for Ton's eval.   -->
-  <!-- Remove after one variant is picked.                           -->
-  <!-- ============================================================ -->
-  <section class="bg-white border-2 border-dashed border-amber-300 rounded-xl p-8">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h2 class="font-serif text-2xl">Details chooser — variants preview</h2>
-        <p class="text-xs text-stone-500 mt-1">Click each variant to see its "selected" state. Pick the one that feels best — others will be removed.</p>
-      </div>
-      <span class="text-[10px] uppercase tracking-[0.15em] text-amber-700 font-semibold flex-shrink-0">Temporary · for evaluation</span>
-    </div>
-
-    <div class="space-y-8">
-
-      <!-- ====== Variant 1: Pill toggle + heading, no default ====== -->
-      <div x-data="{ mode: null }" class="pb-8 border-b border-stone-200">
-        <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-3">Variant 1 · Pill toggle, no default + heading</p>
-        <div class="space-y-3 max-w-2xl">
-          <p class="text-sm text-stone-700">How would you like to add recipient details?</p>
-          <div class="inline-flex bg-stone-100 rounded-md p-0.5">
-            <button @click="mode='now'" :class="mode==='now' ? 'bg-white shadow-sm text-black' : 'text-stone-600 hover:text-black'" class="px-4 py-2 text-sm font-medium rounded transition">Add now</button>
-            <button @click="mode='later'" :class="mode==='later' ? 'bg-white shadow-sm text-black' : 'text-stone-600 hover:text-black'" class="px-4 py-2 text-sm font-medium rounded transition">I'll do it later</button>
-          </div>
-          <div x-show="mode" class="bg-stone-50 border border-stone-200 rounded-md p-3 text-xs text-stone-500 mt-3">
-            ↓ Personalization (Add now) or Order quantity + Download template (I'll do it later) reveals here.
-            <button @click="mode = null" class="ml-3 text-stone-600 hover:text-black underline underline-offset-2">Reset</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ====== Variant 2: Inline buttons, no decoration ====== -->
-      <div x-data="{ mode: null }" class="pb-8 border-b border-stone-200">
-        <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-3">Variant 2 · Inline buttons (text CTAs, no radio/cards)</p>
-        <div class="space-y-3 max-w-2xl">
-          <!-- Before selection -->
-          <template x-if="!mode">
-            <div class="space-y-3">
-              <p class="text-sm text-stone-700">How to add recipient details?</p>
-              <div class="flex gap-3">
-                <button @click="mode='now'" class="px-4 py-2.5 text-sm font-medium border border-stone-300 rounded-md hover:bg-stone-50 hover:border-stone-900 transition">I'll add them now</button>
-                <button @click="mode='later'" class="px-4 py-2.5 text-sm font-medium border border-stone-300 rounded-md hover:bg-stone-50 hover:border-stone-900 transition">Send recipients a link</button>
-              </div>
-            </div>
-          </template>
-          <!-- After selection -->
-          <template x-if="mode">
-            <div class="flex items-center gap-4 text-sm">
-              <span class="inline-flex items-center gap-2">
-                <svg class="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd"/></svg>
-                <span class="font-medium text-stone-900" x-text="mode === 'now' ? 'Adding details now' : 'Sending recipients a link'"></span>
-              </span>
-              <button @click="mode = mode === 'now' ? 'later' : 'now'" class="text-stone-500 hover:text-black underline underline-offset-2 text-xs">
-                Switch to <span x-text="mode === 'now' ? 'link' : 'now'"></span>
-              </button>
-              <button @click="mode = null" class="text-stone-400 hover:text-black text-xs">Reset</button>
-            </div>
-          </template>
-          <div x-show="mode" class="bg-stone-50 border border-stone-200 rounded-md p-3 text-xs text-stone-500">
-            ↓ Content for the chosen mode reveals here.
-          </div>
-        </div>
-      </div>
-
-      <!-- ====== Variant 3: Cards collapse to compact bar ====== -->
-      <div x-data="{ mode: null }">
-        <p class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold mb-3">Variant 3 · Cards transform into compact summary bar</p>
-        <div class="space-y-3 max-w-3xl">
-          <!-- Before: 2 large cards -->
-          <div x-show="!mode" x-transition.opacity.duration.200ms class="space-y-3">
-            <p class="text-sm text-stone-700">How would you like to add recipient details?</p>
-            <div class="grid grid-cols-2 gap-3">
-              <button @click="mode='now'" class="text-left p-5 border border-stone-200 rounded-lg hover:border-stone-900 hover:shadow-sm transition group">
-                <div class="flex items-center gap-2.5 mb-2">
-                  <svg class="w-5 h-5 text-stone-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"/></svg>
-                  <h4 class="font-medium text-stone-900">Add details now</h4>
-                </div>
-                <p class="text-xs text-stone-500 leading-relaxed">Fill in recipient info and personalization for each gift right here on this page.</p>
-              </button>
-              <button @click="mode='later'" class="text-left p-5 border border-stone-200 rounded-lg hover:border-stone-900 hover:shadow-sm transition group">
-                <div class="flex items-center gap-2.5 mb-2">
-                  <svg class="w-5 h-5 text-stone-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
-                  <h4 class="font-medium text-stone-900">Send recipients a link</h4>
-                </div>
-                <p class="text-xs text-stone-500 leading-relaxed">Pay now, recipients complete their own details via the link before the deadline.</p>
-              </button>
-            </div>
-          </div>
-          <!-- After: compact summary bar -->
-          <div x-show="mode" x-transition.opacity.duration.200ms class="flex items-center justify-between bg-stone-50 border border-stone-200 rounded-md px-4 py-2.5">
-            <span class="flex items-center gap-2">
-              <span class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold">Details</span>
-              <span class="text-sm font-medium text-stone-900" x-text="mode === 'now' ? 'Adding details now' : 'Sending recipients a link'"></span>
-            </span>
-            <button @click="mode = null" class="text-stone-500 hover:text-black text-xs underline underline-offset-2">Change choice</button>
-          </div>
-          <div x-show="mode" class="bg-stone-50 border border-stone-200 rounded-md p-3 text-xs text-stone-500">
-            ↓ Content for the chosen mode reveals here.
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-
   <!-- ========== PRODUCT CARDS ========== -->
   <template x-for="(product, pIdx) in products" :key="product.id">
     <article class="bg-white rounded-xl border border-stone-200">
@@ -273,6 +167,15 @@
               <!-- ===== SHIPMENT BODY ===== -->
               <div class="p-6 space-y-4">
 
+              <!-- Hint: pick address first (Same mode without address) — Russell rule #1 -->
+              <div x-show="shipment.addressMode === 'same' && !shipment.shipToId" class="flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                <span>Pick where it ships to in the header above to continue.</span>
+              </div>
+
+              <!-- Disabled-until-address wrapper (Same mode + no shipToId) — Russell rule #1 -->
+              <div class="space-y-4 transition-opacity" :class="(shipment.addressMode === 'same' && !shipment.shipToId) ? 'opacity-40 pointer-events-none' : ''">
+
               <!-- Shipping Method — only when Same for all. Auto-fit grid scales for 2/3/4+ options. -->
               <div x-show="shipment.addressMode === 'same'" class="space-y-2">
                 <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Shipping</p>
@@ -293,12 +196,36 @@
                 </div>
               </div>
 
-              <!-- Details toggle: aligned LEFT under Shipping -->
-              <div class="flex items-center gap-3">
-                <span class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-500">Details</span>
-                <div class="inline-flex bg-stone-100 rounded-md p-0.5">
-                  <button @click="shipment.detailsMode='now'" :class="shipment.detailsMode==='now' ? 'bg-white shadow-sm text-black' : 'text-stone-600'" class="px-3 py-1.5 text-xs font-medium rounded transition">Add now</button>
-                  <button @click="shipment.detailsMode='later'" :class="shipment.detailsMode==='later' ? 'bg-white shadow-sm text-black' : 'text-stone-600'" class="px-3 py-1.5 text-xs font-medium rounded transition">I'll do it later</button>
+              <!-- Details chooser (Variant 3) — cards before selection, compact summary bar after.
+                   Russell feedback: separate personalization from delivery; don't show by default. -->
+              <div>
+                <!-- Before selection: 2 cards with descriptions -->
+                <div x-show="!shipment.detailsMode" x-transition.opacity.duration.200ms class="space-y-3">
+                  <p class="text-sm text-stone-700">How would you like to add recipient details?</p>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button @click="shipment.detailsMode='now'" class="text-left p-5 border border-stone-200 rounded-lg hover:border-stone-900 hover:shadow-sm transition">
+                      <div class="flex items-center gap-2.5 mb-2">
+                        <svg class="w-5 h-5 text-stone-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"/></svg>
+                        <h4 class="font-medium text-stone-900">Add details now</h4>
+                      </div>
+                      <p class="text-xs text-stone-500 pl-[30px]">Fill in recipient details here.</p>
+                    </button>
+                    <button @click="shipment.detailsMode='later'" class="text-left p-5 border border-stone-200 rounded-lg hover:border-stone-900 hover:shadow-sm transition">
+                      <div class="flex items-center gap-2.5 mb-2">
+                        <svg class="w-5 h-5 text-stone-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+                        <h4 class="font-medium text-stone-900">Send recipients a link</h4>
+                      </div>
+                      <p class="text-xs text-stone-500 pl-[30px]">Recipients fill in via a link.</p>
+                    </button>
+                  </div>
+                </div>
+                <!-- After selection: compact summary bar -->
+                <div x-show="shipment.detailsMode" x-transition.opacity.duration.200ms class="flex items-center justify-between bg-stone-50 border border-stone-200 rounded-md px-4 py-2.5">
+                  <span class="flex items-center gap-2">
+                    <span class="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-semibold">Details</span>
+                    <span class="text-sm font-medium text-stone-900" x-text="shipment.detailsMode === 'now' ? 'Adding details now' : 'Sending recipients a link'"></span>
+                  </span>
+                  <button @click="shipment.detailsMode = null" class="text-stone-500 hover:text-black text-xs underline underline-offset-2">Change choice</button>
                 </div>
               </div>
 
@@ -579,6 +506,8 @@
                   <p class="text-xs text-stone-400 mt-2 leading-snug">Optional. Pre-fill recipient details offline, then upload via the link.</p>
                 </div>
               </div>
+
+              </div><!-- end disabled-until-address wrapper -->
 
               </div>
             </section>
@@ -1096,7 +1025,7 @@ function checkoutApp() {
         shipments: [{
           id: 11,
           addressMode: 'same',
-          detailsMode: 'now',
+          detailsMode: null,
           shipping: 'ground',
           deadline: '2025-08-15',
           page: 1,
@@ -1122,7 +1051,7 @@ function checkoutApp() {
         shipments: [{
           id: 11,
           addressMode: 'same',
-          detailsMode: 'now',
+          detailsMode: null,
           shipping: 'ground',
           deadline: '2025-08-15',
           page: 1,
@@ -1145,7 +1074,7 @@ function checkoutApp() {
         shipments: [{
           id: 11,
           addressMode: 'different',
-          detailsMode: 'now',
+          detailsMode: null,
           shipping: 'ground',
           deadline: '2025-08-15',
           page: 1,
@@ -1337,7 +1266,7 @@ function checkoutApp() {
       p.shipments.push({
         id: newId,
         addressMode: 'same',
-        detailsMode: 'now',
+        detailsMode: null,
         shipping: 'ground',
         deadline: '2025-08-15',
         page: 1,
@@ -1369,7 +1298,7 @@ function checkoutApp() {
         shipments: [{
           id: newId + 100,
           addressMode: 'same',
-          detailsMode: 'now',
+          detailsMode: null,
           shipping: 'ground',
           deadline: '2025-08-15',
           page: 1,
